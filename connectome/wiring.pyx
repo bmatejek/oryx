@@ -28,7 +28,7 @@ def ExtractWiringDiagram(segmentation, synapses):
     # convert the numpy arrays to c++
     cdef np.ndarray[long, ndim=3, mode='c'] cpp_segmentation = np.ascontiguousarray(segmentation, dtype=ctypes.c_int64)
     cdef np.ndarray[long, ndim=3, mode='c'] cpp_synaspses = np.ascontiguousarray(synapses, dtype=ctypes.c_int64)
-    cdef np.ndarray[long, ndim=1, mode='c'] cpp_grid_size = np.ascontiguousarray(segmentation.shape, dtype=ctypes.c_int64)
+    cdef np.ndarray[long, ndim=1, mode='c'] cpp_grid_size = np.ascontiguousarray(grid_size, dtype=ctypes.c_int64)
     #lut_directory = os.path.dirname(__file__)
 
     # call the topological skeleton algorithm
