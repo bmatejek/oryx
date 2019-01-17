@@ -685,6 +685,10 @@ void CppTopologicalThinning(const char *prefix, long skeleton_resolution[3], con
 */
 
 
+#include <stdio.h>
+#include "cpp-wiring.h"
+
+
 void CppExtractWiringDiagram(long *resolution, unsigned char *synapses, long grid_size[3])
 {
     printf("%ld %ld %ld\n", resolution[IB_Z], resolution[IB_Y], resolution[IB_X]);
