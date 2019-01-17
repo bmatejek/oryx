@@ -10,3 +10,5 @@ def ReadH5File(filename, dataset=None):
         # read the first dataset if none given
         if dataset == None: data = np.array(hf[hf.keys()[0]])
         else: data = np.array(hf[dataset])
+
+        return data
