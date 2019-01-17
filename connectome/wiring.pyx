@@ -11,7 +11,7 @@ import numpy as np
 
 
 cdef extern from 'cpp-wiring.h':
-    void CppExtractWiringDiagram(long *segmentation, unsigned char *synapses, long grid_size[3])
+    void CppExtractWiringDiagram(long *segmentation, long *synapses, long grid_size[3])
 
 
 
@@ -19,7 +19,7 @@ cdef extern from 'cpp-wiring.h':
 def ExtractWiringDiagram(segmentation, synapses):
     # everything needs to be long ints and unsigned chars to work with c++
     if not segmentation.dtype == np.int64: segmentation = segmentation.astype(np.int64)
-    if not synapses.dtype == np.uint8: synapses = synapses.astype(np.uint8)
+    if not synapses.dtype == np.int64: synapses = synapses.astype(np.int64)
 
     # get the size of the array
     assert (segmentation.shape == synapses.shape)
@@ -27,7 +27,7 @@ def ExtractWiringDiagram(segmentation, synapses):
     
     # convert the numpy arrays to c++
     cdef np.ndarray[long, ndim=3, mode='c'] cpp_segmentation = np.ascontiguousarray(segmentation, dtype=ctypes.c_int64)
-    cdef np.ndarray[unsigned char, ndim=3, mode='c'] cpp_synaspses = np.ascontiguousarray(synapses, dtype=ctypes.c_uint8)
+    cdef np.ndarray[long, ndim=3, mode='c'] cpp_synaspses = np.ascontiguousarray(synapses, dtype=ctypes.c_int64)
     cdef np.ndarray[long, ndim=1, mode='c'] cpp_grid_size = np.ascontiguousarray(segmentation.shape, dtype=ctypes.c_int64)
     #lut_directory = os.path.dirname(__file__)
 
