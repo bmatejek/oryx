@@ -3,7 +3,7 @@
 
 
 // function calls across cpp files
-void CppExtractWiringDiagram(long *segmentation, long *synapses, long grid_size[3]);
+void CppExtractWiringDiagram(const char *prefix, const char *lookup_table_directory, long *segmentation, long *synapses, long grid_size[3]);
 
 
 // universal variables and functions

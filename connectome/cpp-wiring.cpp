@@ -1,7 +1,9 @@
 /* c++ file to extract wiring diagram */
 
-/*#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <vector>
+#include <set>
 #include "cpp-wiring.h"
 
 
@@ -22,7 +24,6 @@ static const int WEST = 5;
 // lookup tables
 
 static unsigned char *lut_simple;
-static unsigned char *lut_isthmus;
 
 
 
@@ -88,34 +89,34 @@ static void set_char_mask(void)
 
 static void PopulateOffsets(void)
 {
-    offsets[0] = -1 * grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X] - 1;
-    offsets[1] = -1 * grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X];
-    offsets[2] = -1 * grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X] + 1;
-    offsets[3] = -1 * grid_size[IB_Y] * grid_size[IB_X] - 1;
-    offsets[4] = -1 * grid_size[IB_Y] * grid_size[IB_X];
-    offsets[5] = -1 * grid_size[IB_Y] * grid_size[IB_X] + 1;
-    offsets[6] = -1 * grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X] - 1;
-    offsets[7] = -1 * grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X];
-    offsets[8] = -1 * grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X] + 1;
+    offsets[0] = -1 * grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X] - 1;
+    offsets[1] = -1 * grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X];
+    offsets[2] = -1 * grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X] + 1;
+    offsets[3] = -1 * grid_size[OR_Y] * grid_size[OR_X] - 1;
+    offsets[4] = -1 * grid_size[OR_Y] * grid_size[OR_X];
+    offsets[5] = -1 * grid_size[OR_Y] * grid_size[OR_X] + 1;
+    offsets[6] = -1 * grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X] - 1;
+    offsets[7] = -1 * grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X];
+    offsets[8] = -1 * grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X] + 1;
 
-    offsets[9] = -1 * grid_size[IB_X] - 1;
-    offsets[10] = -1 * grid_size[IB_X];
-    offsets[11] = -1 * grid_size[IB_X] + 1;
+    offsets[9] = -1 * grid_size[OR_X] - 1;
+    offsets[10] = -1 * grid_size[OR_X];
+    offsets[11] = -1 * grid_size[OR_X] + 1;
     offsets[12] = - 1;
     offsets[13] = + 1;
-    offsets[14] = grid_size[IB_X] - 1;
-    offsets[15] = grid_size[IB_X];
-    offsets[16] = grid_size[IB_X] + 1;
+    offsets[14] = grid_size[OR_X] - 1;
+    offsets[15] = grid_size[OR_X];
+    offsets[16] = grid_size[OR_X] + 1;
 
-    offsets[17] = grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X] - 1;
-    offsets[18] = grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X];
-    offsets[19] = grid_size[IB_Y] * grid_size[IB_X] - grid_size[IB_X] + 1;
-    offsets[20] = grid_size[IB_Y] * grid_size[IB_X] - 1;
-    offsets[21] = grid_size[IB_Y] * grid_size[IB_X];
-    offsets[22] = grid_size[IB_Y] * grid_size[IB_X] + 1;
-    offsets[23] = grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X] - 1;
-    offsets[24] = grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X];
-    offsets[25] = grid_size[IB_Y] * grid_size[IB_X] + grid_size[IB_X] + 1;
+    offsets[17] = grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X] - 1;
+    offsets[18] = grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X];
+    offsets[19] = grid_size[OR_Y] * grid_size[OR_X] - grid_size[OR_X] + 1;
+    offsets[20] = grid_size[OR_Y] * grid_size[OR_X] - 1;
+    offsets[21] = grid_size[OR_Y] * grid_size[OR_X];
+    offsets[22] = grid_size[OR_Y] * grid_size[OR_X] + 1;
+    offsets[23] = grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X] - 1;
+    offsets[24] = grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X];
+    offsets[25] = grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X] + 1;
 }
 
 
@@ -295,20 +296,6 @@ static void InitializeLookupTables(const char *lookup_table_directory)
     }
     fclose(lut_file);
 
-    // read the isthmus lookup table
-    sprintf(lut_filename, "%s/lut_isthmus.dat", lookup_table_directory);
-    lut_isthmus = new unsigned char[lookup_table_size];
-    lut_file = fopen(lut_filename, "rb");
-    if (!lut_file) {
-        fprintf(stderr, "Failed to read %s\n", lut_filename);
-        exit(-1);
-    }
-    if (fread(lut_isthmus, 1, lookup_table_size, lut_file) != lookup_table_size) {
-        fprintf(stderr, "Failed to read %s\n", lut_filename);
-        exit(-1);
-    }
-    fclose(lut_file);
-
     // set the mask variables
     set_char_mask();
     set_long_mask();
@@ -318,11 +305,11 @@ static void InitializeLookupTables(const char *lookup_table_directory)
 
 static void CollectSurfaceVoxels(void)
 {
-    for (long iz = 1; iz < grid_size[IB_Z] - 1; ++iz) {
-        for (long iy = 1; iy < grid_size[IB_Y] - 1; ++iy) {
-            for (long ix = 1; ix < grid_size[IB_X] - 1; ++ix) {
+    for (long iz = 1; iz < grid_size[OR_Z] - 1; ++iz) {
+        for (long iy = 1; iy < grid_size[OR_Y] - 1; ++iy) {
+            for (long ix = 1; ix < grid_size[OR_X] - 1; ++ix) {
                 long iv = IndicesToIndex(ix, iy, iz);
-                if (segmentation[iv]) {
+                if (segmentation[iv] == 1) {
                     if (!segmentation[IndicesToIndex(ix, iy, iz - 1)] ||
                             !segmentation[IndicesToIndex(ix, iy, iz + 1)] ||
                             !segmentation[IndicesToIndex(ix, iy - 1, iz)] ||
@@ -362,13 +349,6 @@ static bool Simple26_6(unsigned int neighbors)
 
 
 
-static bool Isthmus(unsigned int neighbors)
-{
-    return lut_isthmus[(neighbors >> 3)] & char_mask[neighbors % 8];
-}
-
-
-
 static void DetectSimpleBorderPoints(PointList *deletable_points, int direction)
 {
     ListElement *LE = (ListElement *)surface_voxels.first;
@@ -378,7 +358,7 @@ static void DetectSimpleBorderPoints(PointList *deletable_points, int direction)
         long iy = LE->iy;
         long iz = LE->iz;
 
-        // not an isthmus
+        // not a synapse endpoint
         if (segmentation[iv] == 2) {
             long value = 0;
             switch (direction) {
@@ -420,11 +400,6 @@ static void DetectSimpleBorderPoints(PointList *deletable_points, int direction)
                     voxel.iy = iy;
                     voxel.iz = iz;
                     AddToList(deletable_points, voxel, LE);
-                }
-                else {
-                    if (Isthmus(neighbors)) {
-                        segmentation[iv] = 3;
-                    }
                 }
             }
         }
@@ -535,91 +510,86 @@ static bool IsEndpoint(long iv)
 
 
 
-void CppTopologicalThinning(const char *prefix, long skeleton_resolution[3], const char *lookup_table_directory, bool benchmark)
+void CppExtractWiringDiagram(const char *prefix, const char *lookup_table_directory, long *input_segmentation, long *input_synapses, long input_grid_size[3])
 {
+    // get the maximum label in this dataset
+    long max_label = 0;
+    for (long iv = 0; iv < input_grid_size[OR_Z] * input_grid_size[OR_Y] * input_grid_size[OR_X]; ++iv) {
+        if (input_segmentation[iv] > max_label) 
+            max_label = input_segmentation[iv];
+    }
+    max_label++;  // need to increase max label by one here (can't in loop)
+
     // initialize all of the lookup tables
     InitializeLookupTables(lookup_table_directory);
+    // add padding around each segment (only way that populate offsets works!!)
+    grid_size[OR_Z] = input_grid_size[OR_Z] + 2;
+    grid_size[OR_Y] = input_grid_size[OR_Y] + 2;
+    grid_size[OR_X] = input_grid_size[OR_X] + 2;
 
-    // read the topologically downsampled file
-    char input_filename[4096];
-    if (benchmark) sprintf(input_filename, "benchmarks/skeleton/%s-downsample-%03ldx%03ldx%03ld.bytes", prefix, skeleton_resolution[IB_X], skeleton_resolution[IB_Y], skeleton_resolution[IB_Z]);
-    else sprintf(input_filename, "skeletons/%s/downsample-%03ldx%03ldx%03ld.bytes", prefix, skeleton_resolution[IB_X], skeleton_resolution[IB_Y], skeleton_resolution[IB_Z]);
-
-    // open the input file
-    FILE *rfp = fopen(input_filename, "rb");
-    if (!rfp) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-
-    // read the size and number of segments
-    if (fread(&(grid_size[IB_Z]), sizeof(long), 1, rfp) != 1) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-    if (fread(&(grid_size[IB_Y]), sizeof(long), 1, rfp) != 1) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-    if (fread(&(grid_size[IB_X]), sizeof(long), 1, rfp) != 1) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-
-    // open the output filename
+    // set global indexing parameters
+    nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
+    sheet_size = grid_size[OR_Y] * grid_size[OR_X];
+    row_size = grid_size[OR_X];
+    // can  use offsets since all paramters are offset by 1
+    PopulateOffsets();
+    
+    // create an output file for the points
     char output_filename[4096];
-    if (benchmark) sprintf(output_filename, "benchmarks/skeleton/%s-thinning-%03ldx%03ldx%03ld-downsample-skeleton.pts", prefix, skeleton_resolution[IB_X], skeleton_resolution[IB_Y], skeleton_resolution[IB_Z]);
-    else sprintf(output_filename, "skeletons/%s/thinning-%03ldx%03ldx%03ld-downsample-skeleton.pts", prefix, skeleton_resolution[IB_X], skeleton_resolution[IB_Y], skeleton_resolution[IB_Z]);
+    sprintf(output_filename, "connectomes/%s_connectome.pts", prefix);
 
     FILE *wfp = fopen(output_filename, "wb");
     if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&(max_label), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
-    // go through all labels
-    long max_label;
-    if (fread(&max_label, sizeof(long), 1, rfp) != 1) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
+    std::vector<long> *segments = new std::vector<long>[max_label];
+    std::set<long> *synapses_per_segment = new std::set<long>[max_label];
+    std::vector<long> *synapse_points_per_segment = new std::vector<long>[max_label];
+    for (long is = 0; is < max_label; ++is) {
+        segments[is] = std::vector<long>();
+        synapses_per_segment[is] = std::set<long>();
+        synapse_points_per_segment[is] = std::vector<long>();
+    }
+    for (long iz = 0; iz < input_grid_size[OR_Z]; ++iz) {
+        for (long iy = 0; iy < input_grid_size[OR_Y]; ++iy) {
+            for (long ix = 0; ix < input_grid_size[OR_X]; ++ix) {
+                // get the segment for this index
+                long index = iz * input_grid_size[OR_Y] * input_grid_size[OR_X] + iy * input_grid_size[OR_X] + ix;
+                long segment = input_segmentation[index];
+                if (!segment) continue;
 
-    // write the header for the output file
-    if (fwrite(&(grid_size[IB_Z]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&(grid_size[IB_Y]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&(grid_size[IB_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&max_label, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+                // the index in the 1-padded array
+                long padded_index = (iz + 1) * grid_size[OR_Y] * grid_size[OR_X] + (iy + 1) * grid_size[OR_X] + (ix + 1);
+                segments[segment].push_back(padded_index);
 
-    // add padding around each segment (only way that populate offsets works!!)
-    grid_size[IB_Z] += 2;
-    grid_size[IB_Y] += 2;
-    grid_size[IB_X] += 2;
+                long synapse = input_synapses[index];
+                if (!synapse) continue;
 
-    // set global indexing parameters
-    nentries = grid_size[IB_Z] * grid_size[IB_Y] * grid_size[IB_X];
-    sheet_size = grid_size[IB_Y] * grid_size[IB_X];
-    row_size = grid_size[IB_X];
-    PopulateOffsets();
-
-    double *running_times = new double[max_label];
+                if (synapses_per_segment[segment].find(synapse) != synapses_per_segment[segment].end()) continue;
+                synapses_per_segment[segment].insert(synapse);
+                synapse_points_per_segment[segment].push_back(padded_index);
+            }
+        }
+    }
 
     for (long label = 0; label < max_label; ++label) {
-        clock_t t1, t2;
-        t1 = clock();
-
-        // get the number of points for this label
-        long num;
-        if (fread(&num, sizeof(long), 1, rfp) != 1) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-
+        printf("%ld\n", label);
         // create array for this label
         segmentation = new unsigned char[nentries];
-        for (long iv = 0; iv < nentries; ++iv) 
-            segmentation[iv] = 0;
-
-        // read all of the downsampled locations
-        long *elements = new long[num];
-        if (fread(elements, sizeof(long), num, rfp) != (unsigned long)num) { fprintf(stderr, "Failed to read %s\n", input_filename); exit(-1); }
-
-        for (long iv = 0; iv < num; ++iv) {
-            long element = elements[iv];
-
-            // convert the element to non-cropped iz, iy, ix
-            long iz = element / ((grid_size[IB_X] - 2) * (grid_size[IB_Y] - 2));
-            long iy = (element - iz * (grid_size[IB_X] - 2) * (grid_size[IB_Y] - 2)) / (grid_size[IB_X] - 2);
-            long ix = element % (grid_size[IB_X] - 2);
-
-            // update the element based on the padding
-            element = (iz + 1) * sheet_size + (iy + 1) * row_size + ix + 1;
-            segmentation[element] = 1;
+        for (long iv = 0; iv < nentries; ++iv)
+            segmentation[iv] = 0;   
+        for (unsigned long iv = 0; iv < segments[label].size(); ++iv) {
+            segmentation[segments[label][iv]]++;
+        }
+        for (unsigned long iv = 0; iv < synapse_points_per_segment[label].size(); ++iv) {
+            segmentation[synapse_points_per_segment[label][iv]] = 3;
         }
 
         // call the sequential thinning algorithm
         SequentialThinning();
 
         // count the number of remaining points
-        num = 0;
+        long num = 0;
         ListElement *LE = (ListElement *) surface_voxels.first;
         while (LE != NULL) {
             num++;
@@ -637,7 +607,7 @@ void CppTopologicalThinning(const char *prefix, long skeleton_resolution[3], con
             long iz = LE->iz - 1;
             long iy = LE->iy - 1;
             long ix = LE->ix - 1;
-            long iv = iz * (grid_size[IB_X] - 2) * (grid_size[IB_Y] - 2) + iy * (grid_size[IB_X] - 2) + ix;
+            long iv = iz * (grid_size[OR_X] - 2) * (grid_size[OR_Y] - 2) + iy * (grid_size[OR_X] - 2) + ix;
 
             // endpoints are written as negatives
             if (IsEndpoint(LE->iv)) iv = -1 * iv;
@@ -652,44 +622,10 @@ void CppTopologicalThinning(const char *prefix, long skeleton_resolution[3], con
 
         // reset global variables
         segmentation = NULL;
-
-        t2 = clock();
-
-        running_times[label] = (double)(t2 - t1) / CLOCKS_PER_SEC;
     }
 
     // close the I/O files
-    fclose(rfp);
     fclose(wfp);
         
-    // save running time information
-    if (benchmark) {
-        char running_times_filename[4096];
-        sprintf(running_times_filename, "benchmarks/skeleton/running-times/skeleton-times/%s-thinning-%03ldx%03ldx%03ld.bytes", prefix, skeleton_resolution[IB_X], skeleton_resolution[IB_Y], skeleton_resolution[IB_Z]);
-
-        FILE *running_times_fp = fopen(running_times_filename, "wb");
-        if (!running_times_fp) exit(-1);
-       
-        if (fwrite(&max_label, sizeof(long), 1, running_times_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", running_times_filename); }
-        if (fwrite(running_times, sizeof(double), max_label, running_times_fp) != (unsigned long) max_label) { fprintf(stderr, "Failed to write to %s\n", running_times_filename); }
-
-        fclose(running_times_fp);
-    }
-
-    delete[] running_times;
-
-
     delete[] lut_simple;
-    delete[] lut_isthmus;
-}
-*/
-
-
-#include <stdio.h>
-#include "cpp-wiring.h"
-
-
-void CppExtractWiringDiagram(long *segmentation, long *synapses, long grid_size[3])
-{
-    printf("%ld %ld %ld\n", grid_size[OR_Z], grid_size[OR_Y], grid_size[OR_X]);
 }
