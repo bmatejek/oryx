@@ -20,13 +20,14 @@ class MetaData:
                     samples = value.split('x')
                     # need to use 2, 1, and 0 here since the outward facing convention is x,y,z, not z, y, x
                     self.resolution = (float(samples[2]), float(samples[1]), float(samples[0]))
-                elif comment == '# segmentation filename':
-                    self.segmetnation_filename = value
-                elif comment == '# synapse filename':
-                    self.synapse_filename = value
-                
-    def SegmentationFilename(self):
-        return self.segmetnation_filename.split()[0], self.segmetnation_filename.split()[1]
+                elif comment == '# grid size':
+                    # separate into individual dimensions
+                    samples = value.split('x')
+                    # need to use 2, 1, and 0 here since the outward facing convention is x,y,z, not z, y, x
+                    self.grid_size = (int(samples[2]), int(samples[1]), int(samples[0]))
 
-    def SynapseFilename(self):
-        return self.synapse_filename.split()[0], self.synapse_filename.split()[1]
+    def Resolution(self):
+        return self.resolution
+
+    def GridSize(self):
+        return self.grid_size
