@@ -1,14 +1,11 @@
+import struct
+import numpy as np
 import h5py
 import os
 import glob
-import re
-import h5py
 
 
-
-import numpy as np
-from PIL import Image
-
+from numba import jit
 
 
 from oryx.utilities import dataIO
@@ -16,118 +13,134 @@ from oryx.utilities.constants import *
 
 
 
-# quick hack to sort filenames naturally
-def tryint(s):
-    try:
-        return int(s)
-    except:
-        return s
+############################
+### FIB25 TRANSFORM CODE ###
+############################
 
-def alphanum_key(s):
-    """ Turn a string into a list of string and number chunks.
-        "z23a" -> ["z", 23, "a"]
-    """
-    return [ tryint(c) for c in re.split('([0-9]+)', s) ]
+@jit(nopython=True)
+def SectionExtractPointCloud(data, z_start):
+    zres, yres, xres = data.shape
 
-def sort_naturally(l):
-    """ Sort the given list in the way that humans expect.
-    """
-    l.sort(key=alphanum_key)
+    max_label = np.amax(data) + 1
 
+    # start with a default element to be removed
+    # needed for numba to get types
+    point_clouds = [[-1] for iv in range(max_label)]
 
-
-def H52ImageStack(prefix, input_directory):
-    # create the output directory if it does not exist
-    if not os.path.exists(output_directory):
-        os.mkdir(output_directory)
-
-    # get all of the files in the input directory
-    filenames = glob.glob('{}/*h5'.format(input_directory))
-    sort_naturally(filenames)
-
-    index = 0
-    # open each h5 file and write png files
-    for filename in filenames:
-        with h5py.File(filename, 'r') as hf:
-            data = np.array(hf[hf.keys()[0]])
-            assert (np.amax(data) < 2**32)
-            data = data.astype(np.uint32)
-
-        zres = data.shape[0]
-        for iz in range(zres):
-            output_filename = 'images/{}/{:06d}.png'.format(prefix, index)
-            
-            # extract this slice and save the image
-            data_slice = data[iz,:,:]
-            im = Image.fromarray(data_slice)
-            im.save(output_filename)
-            
-            index += 1
-
-
-
-def ImageStack2Sections(prefix):
-    zres, yres, xres = dataIO.GridSize(prefix)
-
-    # how many blocks are needed at the given size
-    nyblocks = yres / block_size[OR_Y] + (not (yres % block_size[OR_Y] == 0))
-    nxblocks = xres / block_size[OR_X] + (not (xres % block_size[OR_X] == 0))
-
-    # begin creating the blocks
     for iz in range(zres):
-        # read in the png file
-        data_slice = np.array(Image.open('images/{}/{:06d}.png'.format(prefix, iz)))
-
-        # go through each block and create tiles
-        for iy in range(nyblocks):
-            for ix in range(nxblocks):
-                start_x = ix * block_size[OR_X]
-                end_x = min((ix + 1) * block_size[OR_X], xres)
+        for iy in range(yres):
+            for ix in range(xres):
+                if not data[iz,iy,ix]: continue
                 
-                start_y = iy * block_size[OR_Y]
-                end_y = min((iy + 1) * block_size[OR_Y], yres)
+                # need to add z_start since this section is not necessarilly at the bottom
+                iv = (z_start + iz) * yres * xres + iy * xres + ix
+                point_clouds[data[iz,iy,ix]].append(iv)
 
-                # write this small tile to file
-                output_filename = 'sections/{}/{:06d}-{:06d}x{:06d}-{:06d}x{:06d}.png'.format(prefix, iz, start_y, end_y, start_x, end_x)
-                data_segment = data_slice[start_y:end_y,start_x:end_x]
-                im = Image.fromarray(data_segment)
-                im.save(output_filename)
+    # pop off the default element
+    for iv in range(max_label):
+        point_clouds[iv] = point_clouds[iv][1:]
 
-    
+    return point_clouds
 
-def Sections2Blocks(prefix):
+
+
+def H5Section2PointCloud(prefix, filename, section, section_width):
+    # get grid size as filler for saved files
     zres, yres, xres = dataIO.GridSize(prefix)
 
-    # how many blocks are needed at the given size
-    nzblocks = zres / block_size[OR_Z] + (not (zres % block_size[OR_Z] == 0))
-    nyblocks = yres / block_size[OR_Y] + (not (yres % block_size[OR_Y] == 0))
-    nxblocks = xres / block_size[OR_X] + (not (xres % block_size[OR_X] == 0))
+    # open this file and read data
+    with h5py.File(filename, 'r') as hf:
+        data = np.array(hf['main'])
 
-    for iyb in range(nyblocks):
-        for ixb in range(nxblocks):
-            start_x = ixb * block_size[OR_X]
-            end_x = min((ixb + 1) * block_size[OR_X], xres)
-                
-            start_y = iyb * block_size[OR_Y]
-            end_y = min((iyb + 1) * block_size[OR_Y], yres)
+    # z index should not start at zero most times
+    z_start = section_width * section
+    point_clouds = SectionExtractPointCloud(data, z_start)
 
-            for izb in range(nzblocks):
-                start_z = izb * block_size[OR_Z]
-                end_z = min((izb + 1) * block_size[OR_Z], zres)
-                
-                # create an empty data array
-                data = np.zeros((end_z - start_z, end_y - start_y, end_x - start_x), dtype=np.uint32)
+    for label, point_cloud in enumerate(point_clouds):
+        # skip over missing elements from these slices
+        if not len(point_cloud): continue
 
-                # read in all of the section images
-                index = 0
-                for iz in range(start_z, end_z):
-                    # get the input filename
-                    input_filename = 'sections/{}/{:06d}-{:06d}x{:06d}-{:06d}x{:06d}.png'.format(prefix, iz, start_y, end_y, start_x, end_x)
-                    
-                    data[index,:,:] = np.array(Image.open(input_filename))
-                    index += 1
+        # write the point cloud to file
+        output_filename = 'segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section, label)
+        with open(output_filename, 'w') as fd:
+            npoints = len(point_cloud)
+            fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
+            fd.write(struct.pack('%sq' % npoints, *point_cloud))
+
+
+
+def CombineSectionPointClouds(prefix):
+    # get the grid size for this prefix
+    zres, yres, xres = dataIO.GridSize(prefix)
+
+    sub_directory = 'segmentations/{}/sections'.format(prefix)
+    
+    # get the maximum label from the filenames
+    max_label = max(int(filename.split('-')[-1][:-4]) for filename in os.listdir(sub_directory)) + 1
+
+    # go through every label 
+    for label in range(max_label):
+        filenames = sorted(glob.glob('{}/*-label-{:06d}.pts'.format(sub_directory, label)))
+        if not len(filenames): continue
+        
+        # write the point cloud to this final file
+        output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
+        with open(output_filename, 'wb') as wfd:
+            # write nonsense number of points first and overwrite later
+            npoints = 0
+            wfd.write(struct.pack('qqqq', zres, yres, xres, npoints))
+            for filename in filenames:
+                with open(filename, 'rb') as rfd:
+                    zres, yres, xres, section_npoints = struct.unpack('qqqq', rfd.read(32))
+                    point_cloud = struct.unpack('%sq' % section_npoints, rfd.read(8 * section_npoints))
+                    wfd.write(struct.pack('%sq' % section_npoints, *point_cloud))
+                    npoints += section_npoints
+
+            # reset now that we know the number of true points
+            wfd.seek(0)
+            wfd.write(struct.pack('qqqq', zres, yres, xres, npoints))
+
+
+
+##########################
+### JWR TRANSFORM CODE ###
+##########################
+
+@jit(nopython=True)
+def BinaryExtractPointCloud(data):
+    zres, yres, xres = data.shape
+
+    point_cloud = []
+
+    # all non-zero points belong to the segment
+    for iz in range(zres):
+        for iy in range(yres):
+            for ix in range(xres):
+                if not data[iz,iy,ix]: continue
                 
-                # save the h5 block
-                output_filename = 'blocks/{}/{:06d}x{:06d}-{:06d}x{:06d}-{:06d}x{:06d}.h5'.format(prefix, start_z, end_z, start_y, end_y, start_x, end_x)
-                with h5py.File(output_filename, 'w') as hf:
-                    hf.create_dataset('main', data=data, compression='gzip')
+                iv = iz * yres * xres + iy * xres + ix
+                point_cloud.append(iv)
+
+    return point_cloud
+
+
+
+def BinaryH52PointCloud(prefix, filename, dataset, label):
+    # open this binary file
+    with h5py.File(filename, 'r') as hf:
+        # use np.array to decompress
+        data = np.array(hf[dataset])
+    
+    # verify the resolutions match
+    zres, yres, xres = dataIO.GridSize(prefix)
+    assert (zres == data.shape[OR_Z] and yres == data.shape[OR_Y] and xres == data.shape[OR_X])
+
+    # get all of the non-zero points in a list
+    point_cloud = BinaryExtractPointCloud(data)
+
+    # write the point cloud to file
+    output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
+    with open(output_filename, 'w') as fd:
+        npoints = len(point_cloud)
+        fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
+        fd.write(struct.pack('%sq' % npoints, *point_cloud))
