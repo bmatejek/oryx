@@ -133,5 +133,5 @@ def JWRSynapses():
         with open(filename, 'wb') as fd:
             nsynapses = len(synapses)
 
-            fd.write(struct.pack('qqqq', nsynapses, zres, yres, xres))
+            fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
             fd.write(struct.pack('%sq' % nsynapses, *synapses))
