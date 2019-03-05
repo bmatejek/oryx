@@ -144,3 +144,60 @@ def BinaryH52PointCloud(prefix, filename, dataset, label):
         npoints = len(point_cloud)
         fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
         fd.write(struct.pack('%sq' % npoints, *point_cloud))
+
+
+
+############################
+### SNEMI TRANSFORM CODE ###
+############################
+
+@jit(nopython=True)
+def ExtractPointClouds(data):
+    zres, yres, xres = data.shape
+
+    max_label = np.amax(data) + 1
+
+    # start with a default element to be removed
+    # needed for numba to get types
+    point_clouds = [[-1] for iv in range(max_label)]
+
+    for iz in range(zres):
+        for iy in range(yres):
+            for ix in range(xres):
+                if not data[iz,iy,ix]: continue
+                
+                # need to add z_start since this section is not necessarilly at the bottom
+                iv = iz * yres * xres + iy * xres + ix
+                point_clouds[data[iz,iy,ix]].append(iv)
+
+    # pop off the default element
+    for iv in range(max_label):
+        point_clouds[iv] = point_clouds[iv][1:]
+
+    return point_clouds
+
+
+
+def H52PointCloud(prefix, filename, dataset):
+    # open this h5 file
+    with h5py.File(filename, 'r') as hf:
+        # use np.array to decompress
+        data = np.array(hf[dataset])
+
+    # verify the resolutions match
+    zres, yres, xres = dataIO.GridSize(prefix)
+    assert (zres == data.shape[OR_Z] and yres == data.shape[OR_Y] and xres == data.shape[OR_X])
+
+    # get all of the non-zero points in a list
+    point_clouds = ExtractPointClouds(data)
+
+    for label, point_cloud in enumerate(point_clouds):
+        # skip over missing elements from these slices
+        if not len(point_cloud): continue
+
+        # write the point cloud to file
+        output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
+        with open(output_filename, 'w') as fd:
+            npoints = len(point_cloud)
+            fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
+            fd.write(struct.pack('%sq' % npoints, *point_cloud))

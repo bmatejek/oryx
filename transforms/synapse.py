@@ -1,6 +1,10 @@
 import os
 import struct
+import h5py
 
+
+import numpy as np
+from numba import jit
 
 
 from oryx.utilities import dataIO
@@ -116,7 +120,7 @@ def JWRSynapses():
                 line = line.strip().split()
 
                 ix = int(line[0]) / downsample_factor[OR_X]
-                iy = int(line[1]) / downsample_factor[OR_Y]
+                iy = int(line[1]) / dyahownsample_factor[OR_Y]
                 iz = int(line[2]) / downsample_factor[OR_Z]
                 
                 # verify input
@@ -135,3 +139,98 @@ def JWRSynapses():
 
             fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
             fd.write(struct.pack('%sq' % nsynapses, *synapses))
+
+
+
+############################
+### SNEMI TRANSFORM CODE ###
+############################
+
+def FindSynapseSegmentPairs(segmentations, data):
+    # get the grid size for the data
+    zres, yres, xres = data.shape
+
+    syn_seg_pairs = {}
+
+    for segment in segmentations:
+        # go through each point in each segment
+        for iv in segmentations[segment]:
+            iz = iv / (yres * xres)
+            iy = (iv - iz * yres * xres) / xres
+            ix = iv % xres
+            
+            # not a synapse location
+            if not data[iz,iy,ix]: continue
+
+            synapse = data[iz,iy,ix]
+            if not (synapse, segment) in syn_seg_pairs: syn_seg_pairs[(synapse, segment)] = []
+                
+            # add this point to the list of overlapping locations
+            syn_seg_pairs[(synapse, segment)].append((iz, iy, ix))
+
+    return syn_seg_pairs
+
+
+
+@jit(nopython=True)
+def MedianCoordinate(coordinates):
+    # find the average in the coordinates
+    avg_ix = 0
+    avg_iy = 0
+    avg_iz = 0
+    ncoordinates = len(coordinates)
+
+    for (iz, iy, ix) in coordinates:
+        avg_ix += float(ix) / ncoordinates
+        avg_iy += float(iy) / ncoordinates
+        avg_iz += float(iz) / ncoordinates
+
+    # find the coordinate closest to this location
+    minimum_distance = float('inf')
+    median_point = (-1, -1, -1)
+    for (iz, iy, ix) in coordinates:
+        distance = (avg_ix - ix) * (avg_ix - ix) + (avg_iy - iy) * (avg_iy - iy) + (avg_iz - iz) * (avg_iz - iz)
+        if distance < minimum_distance:
+            minimum_distance = distance
+            median_point = (iz, iy, ix)
+
+    return median_point
+
+        
+
+def SNEMISynapses(prefix):
+    # read in the segmentation points
+    segmentations = dataIO.ReadAllSegmentationPoints(prefix)
+
+    # read in the synapse h5 file
+    with h5py.File('raw_data/synapses/{}/synapses.h5'.format(prefix), 'r') as hf:
+        data = np.array(hf[hf.keys()[0]])
+
+    # get the grid size for this data
+    zres, yres, xres = data.shape
+
+    syn_seg_pairs = FindSynapseSegmentPairs(segmentations, data)
+    syn_per_seg = {}
+
+    for (synapse, segment) in syn_seg_pairs:
+        coordinates = syn_seg_pairs[(synapse, segment)]
+
+        (iz, iy, ix) = MedianCoordinate(coordinates)
+
+        # convert to linear coordinates
+        iv = iz * yres * xres + iy * xres + ix
+
+        if not segment in syn_per_seg:
+            syn_per_seg[segment] = []
+        
+        # add in the median point for this synapse
+        syn_per_seg[segment].append(iv)
+
+    # save all of the files
+    for segment in syn_per_seg:
+        filename = 'synapses/{}/{:06d}.pts'.format(prefix, segment)
+
+        with open(filename, 'wb') as fd:
+            nsynapes = len(syn_per_seg[segment])
+            fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
+            fd.write(struct.pack('%sq' % nsynapes, *syn_per_seg[segment]))
