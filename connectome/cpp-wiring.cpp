@@ -6,6 +6,7 @@
 #include <set>
 #include <string.h>
 #include <unordered_map>
+#include <ctime>
 #include "cpp-wiring.h"
 
 
@@ -595,6 +596,9 @@ static bool IsEndpoint(long iv)
 
 void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_table_directory)
 {
+    // start timing statistics
+    clock_t start_time = clock();
+
     // initialize all of the lookup tables
     InitializeLookupTables(lookup_table_directory);
     
@@ -604,6 +608,9 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
     // populate the point clouds with segment voxels and anchor points
     PopulatePointCloud(prefix, "segmentations", label);
     PopulatePointCloud(prefix, "synapses", label);
+
+    // get the number of points
+    long initial_points = segment.size();
 
     // can  use offsets since all paramters are offset by 1
     // needs to happen after PopulatePointCloud()
@@ -622,12 +629,20 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
 
     // create an output file for the points
     char output_filename[4096];
-    sprintf(output_filename, "connectomes/%s/%06ld.pts", prefix, label);
+    sprintf(output_filename, "thinning/%s/%06ld.pts", prefix, label);
 
     FILE *wfp = fopen(output_filename, "wb");
     if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
+    // unpad the grid size
+    grid_size[OR_Z] -= 2;
+    grid_size[OR_Y] -= 2;
+    grid_size[OR_X] -= 2;
+
     // write the number of elements
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
     if (fwrite(&num, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
     while (surface_voxels.first != NULL) {
@@ -638,7 +653,7 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
         long iz = LE->iz - 1;
         long iy = LE->iy - 1;
         long ix = LE->ix - 1;
-        long iv = iz * (grid_size[OR_X] - 2) * (grid_size[OR_Y] - 2) + iy * (grid_size[OR_X] - 2) + ix;
+        long iv = iz * grid_size[OR_X] * grid_size[OR_Y] + iy * grid_size[OR_X] + ix;
 
         // endpoints are written as negatives
         if (IsEndpoint(LE->iv)) iv = -1 * iv;
@@ -652,4 +667,19 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
     fclose(wfp);
        
     delete[] lut_simple;
+
+    double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
+
+    char time_filename[4096];
+    sprintf(time_filename, "timing/%s-%06ld.time", prefix, label);
+
+    FILE *tfp = fopen(time_filename, "wb");
+    if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+
+    // write the number of points and the total time to file
+    if (fwrite(&initial_points, sizeof(long), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+    if (fwrite(&total_time, sizeof(double), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+
+    // close file
+    fclose(tfp);
 }
