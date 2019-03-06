@@ -46,6 +46,7 @@ static long long_mask[26];
 static unsigned char char_mask[8];
 static long n26_offsets[26];
 static long n6_offsets[6];
+static bool movie = false;
 
 static void set_long_mask(void)
 {
@@ -556,13 +557,51 @@ static long ThinningIterationStep(void)
 
 
 
-static void SequentialThinning(void)
+static void SequentialThinning(const char *prefix, long label)
 {
     // create a vector of surface voxels
     CollectSurfaceVoxels();
     int iteration = 0;
     long changed = 0;
     do {
+        if (movie) {
+            char movie_filename[4096];
+            sprintf(movie_filename, "movies/%s/%06ld-%04ld.pts", prefix, label, iteration);
+
+            FILE *fp = fopen(movie_filename, "wb");
+            if (!fp) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+
+            long zres = grid_size[OR_Z] - 2;
+            long yres = grid_size[OR_Y] - 2;
+            long xres = grid_size[OR_X] - 2;
+            long npoints = 0;
+            for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
+                if (it->second == 2 or it->second == 3) npoints += 1;
+            }
+
+            if (fwrite(&zres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+            if (fwrite(&yres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+            if (fwrite(&xres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+            if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+
+            for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
+                if (it->second == 2 or it->second == 3) {
+                    long iv = it->first;
+
+                    long ix, iy, iz;
+                    IndexToIndices(iv, ix, iy, iz);
+
+                    // remove padding
+                    ix -= 1; iy -= 1; iz -= 1;
+
+                    iv = iz * yres * xres + iy * xres + ix;
+                    if (fwrite(&iv, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
+                }
+            }
+
+            fclose(fp);
+        }
+
         changed = ThinningIterationStep();
         iteration++;
     } while (changed);
@@ -582,7 +621,6 @@ static bool IsEndpoint(long iv)
                 // may create new entries in unordered map but does not matter
                 // since the search space decreases
                 if (segment[linear_index]) nneighbors++;
-                //if (segment[linear_index]) continue;
             }
         }
     }
@@ -617,7 +655,7 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
     PopulateOffsets();
 
     // call the sequential thinning algorithm
-    SequentialThinning();
+    SequentialThinning(prefix, label);
 
     // count the number of remaining points
     long num = 0;

@@ -120,7 +120,7 @@ def JWRSynapses():
                 line = line.strip().split()
 
                 ix = int(line[0]) / downsample_factor[OR_X]
-                iy = int(line[1]) / dyahownsample_factor[OR_Y]
+                iy = int(line[1]) / downsample_factor[OR_Y]
                 iz = int(line[2]) / downsample_factor[OR_Z]
                 
                 # verify input
@@ -186,7 +186,7 @@ def MedianCoordinate(coordinates):
         avg_iz += float(iz) / ncoordinates
 
     # find the coordinate closest to this location
-    minimum_distance = float('inf')
+    minimum_distance = float(10e6)
     median_point = (-1, -1, -1)
     for (iz, iy, ix) in coordinates:
         distance = (avg_ix - ix) * (avg_ix - ix) + (avg_iy - iy) * (avg_iy - iy) + (avg_iz - iz) * (avg_iz - iz)
@@ -231,6 +231,6 @@ def SNEMISynapses(prefix):
         filename = 'synapses/{}/{:06d}.pts'.format(prefix, segment)
 
         with open(filename, 'wb') as fd:
-            nsynapes = len(syn_per_seg[segment])
+            nsynapses = len(syn_per_seg[segment])
             fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
-            fd.write(struct.pack('%sq' % nsynapes, *syn_per_seg[segment]))
+            fd.write(struct.pack('%sq' % nsynapses, *syn_per_seg[segment]))
