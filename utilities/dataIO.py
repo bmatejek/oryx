@@ -33,12 +33,23 @@ def ReadH5File(filename):
 
 
 
+def Labels(prefix):
+    # use synapses instead of segmentations for expressive results
+    return [int(label[:-4]) for label in sorted(os.listdir('synapses/{}'.format(prefix)))]
+
+
+
 def ReadSegmentationPoints(prefix, label):
     # get the filename for the segmentation
     point_cloud_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
 
+    prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
+
     with open(point_cloud_filename, 'rb') as fd:
         zres, yres, xres, npoints, = struct.unpack('qqqq', fd.read(32))
+        assert (zres == prefix_zres)
+        assert (yres == prefix_yres)
+        assert (xres == prefix_xres)
         point_cloud = struct.unpack('%sq' % npoints, fd.read(8 * npoints))
 
     return point_cloud
@@ -46,7 +57,7 @@ def ReadSegmentationPoints(prefix, label):
 
 
 def ReadAllSegmentationPoints(prefix):
-    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
+    labels = Labels(prefix)
     
     point_clouds = {}
 
@@ -58,12 +69,47 @@ def ReadAllSegmentationPoints(prefix):
 
 
 
+def ReadSurfacePoints(prefix, label):
+    # get the filename for the segmentation
+    point_cloud_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
+
+    prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
+
+    with open(point_cloud_filename, 'rb') as fd:
+        zres, yres, xres, npoints, = struct.unpack('qqqq', fd.read(32))
+        assert (zres == prefix_zres)
+        assert (yres == prefix_yres)
+        assert (xres == prefix_xres)
+        point_cloud = struct.unpack('%sq' % npoints, fd.read(8 * npoints))
+
+    return point_cloud
+
+
+
+def ReadAllSurfacePoints(prefix):
+    labels = Labels(prefix)
+    
+    point_clouds = {}
+
+    # read all individual point clouds
+    for label in labels:
+        point_clouds[label] = ReadSurfacePoints(prefix, label)
+
+    return point_clouds
+
+
+
 def ReadSynapsePoints(prefix, label):
     # get the filename for the synapses
     synapse_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
 
+    prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
+
     with open(synapse_filename, 'rb') as fd:
         zres, yres, xres, nsynapses, = struct.unpack('qqqq', fd.read(32))
+        assert (zres == prefix_zres)
+        assert (yres == prefix_yres)
+        assert (xres == prefix_xres)
         synapses = struct.unpack('%sq' % nsynapses, fd.read(8 * nsynapses))
 
     return synapses
@@ -71,8 +117,8 @@ def ReadSynapsePoints(prefix, label):
 
 
 def ReadAllSynapsePoints(prefix):
-    labels = [int(label[:-4]) for label in sorted(os.listdir('synapses/{}'.format(prefix)))]
-
+    labels = Labels(prefix)
+    
     synapses = {}
 
     # read all synapse points
