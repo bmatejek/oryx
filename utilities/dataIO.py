@@ -33,12 +33,6 @@ def ReadH5File(filename):
 
 
 
-def Labels(prefix):
-    # use synapses instead of segmentations for expressive results
-    return [int(label[:-4]) for label in sorted(os.listdir('synapses/{}'.format(prefix)))]
-
-
-
 def ReadSegmentationPoints(prefix, label):
     # get the filename for the segmentation
     point_cloud_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
@@ -57,7 +51,7 @@ def ReadSegmentationPoints(prefix, label):
 
 
 def ReadAllSegmentationPoints(prefix):
-    labels = Labels(prefix)
+    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
     
     point_clouds = {}
 
@@ -87,7 +81,7 @@ def ReadSurfacePoints(prefix, label):
 
 
 def ReadAllSurfacePoints(prefix):
-    labels = Labels(prefix)
+    labels = [int(label[:-4]) for label in sorted(os.listdir('surfaces/{}'.format(prefix)))]
     
     point_clouds = {}
 
@@ -117,7 +111,7 @@ def ReadSynapsePoints(prefix, label):
 
 
 def ReadAllSynapsePoints(prefix):
-    labels = Labels(prefix)
+    labels = [int(label[:-4]) for label in sorted(os.listdir('synapses/{}'.format(prefix)))]
     
     synapses = {}
 

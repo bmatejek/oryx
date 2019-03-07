@@ -13,6 +13,6 @@ extensions = [
 ]
 
 setup(
-    name='verify',
+    name='segment',
     ext_modules=cythonize(extensions)
 )

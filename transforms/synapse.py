@@ -1,6 +1,8 @@
 import os
 import struct
 import h5py
+import math
+import scipy.spatial
 
 
 import numpy as np
@@ -23,10 +25,7 @@ def Fib25Synapses():
     zres, yres, xres = dataIO.GridSize(prefix)
 
     # get the labels for this dataset
-    labels = []
-    for filename in os.listdir('segmentations/{}'.format(prefix)):
-        if not os.path.isfile('segmentations/{}/{}'.format(prefix, filename)): continue        
-        labels.append(int(filename[:-4]))
+    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
 
     synapses_per_segment = {}
     for label in labels:
@@ -96,41 +95,69 @@ def Fib25Synapses():
 
 def JWRSynapses():
     prefix = 'JWR'
-
+    
     # get the grid size to convert to linear coordinates
     zres, yres, xres = dataIO.GridSize(prefix)
-    # JWR segmentation is downsampled by factor of 8 in x and y
-    downsample_factor = (1, 8, 8)
     
+    # JWR has a downsampled segmentation
+    downsample_rate = (1, 8, 8)
 
     # get the labels for this dataset
-    labels = []
-    for filename in os.listdir('segmentations/{}'.format(prefix)):
-        if not os.path.isfile('segmentations/{}/{}'.format(prefix, filename)): continue        
-        labels.append(int(filename[:-4]))
+    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
 
     for label in labels:
+        # get the original filename
         filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
+
+        # read the segmentation points for this label and convert to numpy array
+        surface_point_cloud = dataIO.ReadSurfacePoints(prefix, label)
+        segment_point_cloud = set(dataIO.ReadSegmentationPoints(prefix, label))
+        npoints = len(surface_point_cloud)
+
+        np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
+        for index, iv in enumerate(surface_point_cloud):
+            iz = iv / (yres * xres)
+            iy = (iv - iz * yres * xres) / xres
+            ix = iv % xres
+
+            np_point_cloud[index,:] = (ix, iy, iz)
+            index += 1
 
         synapses = []
 
+        mse = 0.0
         with open(filename, 'r') as fd:
             for line in fd:
                 # remove the new line and separate parts
                 line = line.strip().split()
 
-                ix = int(line[0]) / downsample_factor[OR_X]
-                iy = int(line[1]) / downsample_factor[OR_Y]
-                iz = int(line[2]) / downsample_factor[OR_Z]
-                
-                # verify input
-                assert (0 <= ix and ix < xres)
-                assert (0 <= iy and iy < yres)
-                assert (0 <= iz and iz < zres)
+                ix = int(line[0]) / downsample_rate[OR_X]
+                iy = int(line[1]) / downsample_rate[OR_Y]
+                iz = int(line[2]) / downsample_rate[OR_Z]
 
+                # if already in segment there are no problems
                 iv = iz * yres * xres + iy * xres + ix
-                synapses.append(iv)
-        
+                if iv in segment_point_cloud:
+                    synapses.append(iv)
+                    continue
+                
+                # create a 2D vector for this point
+                vec = np.zeros((1, 3), dtype=np.int32)
+                vec[0,:] = (ix, iy, iz)
+
+                closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
+
+                point_iz = closest_point / (yres * xres)
+                point_iy = (closest_point - point_iz * yres * xres) / xres
+                point_ix = closest_point % xres
+                
+                distance = (ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz)
+                mse += math.sqrt(distance)
+                
+                synapses.append(closest_point)
+                
+        print 'Mean Squared Error: {}'.format(mse / len(synapses))
+
         # save the synapses in the correct form
         filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
 
