@@ -104,4 +104,5 @@ venv.bak/
 .mypy_cache/
 
 connectome/wiring.cpp
+verify/segment.cpp
 .vscode/*
