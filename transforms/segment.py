@@ -107,7 +107,7 @@ def CombineSectionPointClouds(prefix):
 ##########################
 
 @jit(nopython=True)
-def BinaryExtractPointCloud(data):
+def ExtractJWRPointCloud(data):
     zres, yres, xres = data.shape
 
     point_cloud = []
@@ -125,22 +125,24 @@ def BinaryExtractPointCloud(data):
 
 
 
-def BinaryH52PointCloud(prefix, filename, dataset, label):
+def JWRPointCloud(label):
+    filename = 'raw_data/segmentations/JWR/cell{:03d}_connected_d.h5'.format(label)
+
     # open this binary file
     with h5py.File(filename, 'r') as hf:
         # use np.array to decompress
-        data = np.array(hf[dataset])
+        data = np.array(hf[hf.keys()[0]])
     
     # verify the resolutions match
-    zres, yres, xres = dataIO.GridSize(prefix)
+    zres, yres, xres = dataIO.GridSize('JWR')
     assert (zres == data.shape[OR_Z] and yres == data.shape[OR_Y] and xres == data.shape[OR_X])
 
     # get all of the non-zero points in a list
-    point_cloud = BinaryExtractPointCloud(data)
+    point_cloud = ExtractJWRPointCloud(data)
 
     # write the point cloud to file
-    output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
-    with open(output_filename, 'w') as fd:
+    output_filename = 'segmentations/JWR/{:06d}.pts'.format(label)
+    with open(output_filename, 'wb') as fd:
         npoints = len(point_cloud)
         fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
         fd.write(struct.pack('%sq' % npoints, *point_cloud))
@@ -152,7 +154,7 @@ def BinaryH52PointCloud(prefix, filename, dataset, label):
 ############################
 
 @jit(nopython=True)
-def ExtractPointClouds(data):
+def ExtractSNEMIPointClouds(data):
     zres, yres, xres = data.shape
 
     max_label = np.amax(data) + 1
@@ -178,18 +180,20 @@ def ExtractPointClouds(data):
 
 
 
-def H52PointCloud(prefix, filename, dataset):
+def SNEMIPointCloud(prefix):
+    filename = 'raw_data/segmentations/{}/seg.h5'.format(prefix)
+
     # open this h5 file
     with h5py.File(filename, 'r') as hf:
         # use np.array to decompress
-        data = np.array(hf[dataset])
+        data = np.array(hf[hf.keys()[0]])
 
     # verify the resolutions match
     zres, yres, xres = dataIO.GridSize(prefix)
     assert (zres == data.shape[OR_Z] and yres == data.shape[OR_Y] and xres == data.shape[OR_X])
 
     # get all of the non-zero points in a list
-    point_clouds = ExtractPointClouds(data)
+    point_clouds = ExtractSNEMIPointClouds(data)
 
     for label, point_cloud in enumerate(point_clouds):
         # skip over missing elements from these slices
@@ -197,7 +201,7 @@ def H52PointCloud(prefix, filename, dataset):
 
         # write the point cloud to file
         output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
-        with open(output_filename, 'w') as fd:
+        with open(output_filename, 'wb') as fd:
             npoints = len(point_cloud)
             fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
             fd.write(struct.pack('%sq' % npoints, *point_cloud))

@@ -16,18 +16,13 @@ from oryx.utilities.constants import *
 ### JWR VERIFICATION ###
 ########################
 
-def JWRSynapses():
-    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/JWR'))]
-    
-    prefix = 'JWR'
-
+def JWRSynapses(label):
     # make sure each label has a one to one mapping
-    for label in labels:
-        synapses = dataIO.ReadSynapsePoints('JWR', label)
-        point_cloud = set(dataIO.ReadSegmentationPoints('JWR', label))
+    synapses = dataIO.ReadSynapsePoints('JWR', label)
+    point_cloud = set(dataIO.ReadSegmentationPoints('JWR', label))
 
-        for synapse in synapses:
-            assert (synapse in point_cloud)
+    for synapse in synapses:
+        assert (synapse in point_cloud)
 
 
 

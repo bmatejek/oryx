@@ -151,8 +151,10 @@ def JWRSynapses():
                 point_iy = (closest_point - point_iz * yres * xres) / xres
                 point_ix = closest_point % xres
                 
-                distance = (ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz)
-                mse += math.sqrt(distance)
+                distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
+                # skip over clearly wrong synapses
+                if distance > 100: continue
+                mse += distance
                 
                 synapses.append(closest_point)
                 
