@@ -37,7 +37,7 @@ def SNEMIPointCloud(prefix):
     cdef np.ndarray[long, ndim=1, mode='c'] cpp_surface_point_cloud
 
     for label in labels:
-        point_cloud = np.array(dataIO.ReadSegmentationPoints(prefix, label))
+        point_cloud = np.array(dataIO.ReadPoints(prefix, label, 'segmentations'))
         npoints = point_cloud.size
 
         # transform point cloud data to numpy array
@@ -46,7 +46,7 @@ def SNEMIPointCloud(prefix):
         # call verification function
         CppVerifySNEMISegment(&(cpp_seg_data[0,0,0]), nentries, &(cpp_point_cloud[0]), npoints, label, False)
 
-        surface_point_cloud = np.array(dataIO.ReadSurfacePoints(prefix, label))
+        surface_point_cloud = np.array(dataIO.ReadPoints(prefix, label, 'surfaces'))
         nsurface_points = surface_point_cloud.size
 
         # transform point cloud data to numpy array
@@ -75,7 +75,7 @@ def JWRPointCloud(label):
 
     nentries = seg_data.size
 
-    point_cloud = np.array(dataIO.ReadSegmentationPoints('JWR', label))
+    point_cloud = np.array(dataIO.ReadPoints('JWR', label, 'segmentations'))
     npoints = point_cloud.size
 
     # transform raw data to numpy array
@@ -88,7 +88,7 @@ def JWRPointCloud(label):
     CppVerifyJWRSegment(&(cpp_seg_data[0,0,0]), nentries, &(cpp_point_cloud[0]), npoints, False)
     del cpp_point_cloud
 
-    surface_point_cloud = np.array(dataIO.ReadSurfacePoints('JWR', label))
+    surface_point_cloud = np.array(dataIO.ReadPoints('JWR', label, 'surfaces'))
     nsurface_points = surface_point_cloud.size
 
     # transform point cloud data to numpy array

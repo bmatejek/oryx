@@ -18,8 +18,8 @@ from oryx.utilities.constants import *
 
 def JWRSynapses(label):
     # make sure each label has a one to one mapping
-    synapses = dataIO.ReadSynapsePoints('JWR', label)
-    point_cloud = set(dataIO.ReadSegmentationPoints('JWR', label))
+    synapses = dataIO.ReadPoints('JWR', label, 'synapses')
+    point_cloud = set(dataIO.ReadPoints('JWR', label, 'segmentations'))
 
     for synapse in synapses:
         assert (synapse in point_cloud)
@@ -36,7 +36,7 @@ def SNEMISynapses(prefix):
         syn_data = np.array(hf[hf.keys()[0]])
 
     # read in all of the synapses 
-    syn_per_seg = dataIO.ReadAllSynapsePoints(prefix)
+    syn_per_seg = dataIO.ReadAllPoints(prefix, 'synapses')
 
     # get the grid size
     zres, yres, xres = dataIO.GridSize(prefix)

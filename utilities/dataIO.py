@@ -16,6 +16,12 @@ def GridSize(prefix):
 
 
 
+def Resolution(prefix):
+    # return the resolution for this prefix
+    return meta_data.MetaData(prefix).Resolution()
+
+
+
 def ReadImage(filename):
     # return the image corresponding to this file
     im = np.array(Image.open(filename))
@@ -33,9 +39,9 @@ def ReadH5File(filename):
 
 
 
-def ReadSegmentationPoints(prefix, label):
+def ReadPoints(prefix, label, dataset):
     # get the filename for the segmentation
-    point_cloud_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
+    point_cloud_filename = '{}/{}/{:06d}.pts'.format(dataset, prefix, label)
 
     prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
 
@@ -50,73 +56,36 @@ def ReadSegmentationPoints(prefix, label):
 
 
 
-def ReadAllSegmentationPoints(prefix):
-    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
+def ReadAllPoints(prefix, dataset):
+    labels = [int(label[:-4]) for label in sorted(os.listdir('{}/{}'.format(dataset, prefix)))]
     
     point_clouds = {}
 
     # read all individual point clouds
     for label in labels:
-        point_clouds[label] = ReadSegmentationPoints(prefix, label)
+        point_clouds[label] = ReadPoints(prefix, label, dataset)
 
     return point_clouds
 
 
 
-def ReadSurfacePoints(prefix, label):
-    # get the filename for the segmentation
-    point_cloud_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
+def ReadRadii(prefix, label):
+    # get the filename with all of the widths
+    radius_filename = 'radii/{}/{:06d}.pts'.format(prefix, label)
 
     prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
 
-    with open(point_cloud_filename, 'rb') as fd:
-        zres, yres, xres, npoints, = struct.unpack('qqqq', fd.read(32))
+    radii = {}
+
+    with open(radius_filename, 'rb') as fd:
+        zres, yres, xres, nelements, = struct.unpack('qqqq', fd.read(32))
         assert (zres == prefix_zres)
         assert (yres == prefix_yres)
         assert (xres == prefix_xres)
-        point_cloud = struct.unpack('%sq' % npoints, fd.read(8 * npoints))
 
-    return point_cloud
+        for _ in range(nelements):
+            index, neighbor_index, radius, = struct.unpack('qqd', fd.read(24))
+            radii[index] = (neighbor_index, radius)
 
-
-
-def ReadAllSurfacePoints(prefix):
-    labels = [int(label[:-4]) for label in sorted(os.listdir('surfaces/{}'.format(prefix)))]
-    
-    point_clouds = {}
-
-    # read all individual point clouds
-    for label in labels:
-        point_clouds[label] = ReadSurfacePoints(prefix, label)
-
-    return point_clouds
-
-
-
-def ReadSynapsePoints(prefix, label):
-    # get the filename for the synapses
-    synapse_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
-
-    prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
-
-    with open(synapse_filename, 'rb') as fd:
-        zres, yres, xres, nsynapses, = struct.unpack('qqqq', fd.read(32))
-        assert (zres == prefix_zres)
-        assert (yres == prefix_yres)
-        assert (xres == prefix_xres)
-        synapses = struct.unpack('%sq' % nsynapses, fd.read(8 * nsynapses))
-
-    return synapses
-
-
-
-def ReadAllSynapsePoints(prefix):
-    labels = [int(label[:-4]) for label in sorted(os.listdir('synapses/{}'.format(prefix)))]
-    
-    synapses = {}
-
-    # read all synapse points
-    for label in labels:
-        synapses[label] = ReadSynapsePoints(prefix, label)
-
-    return synapses
+    # return the dictionary of radii for each skeleton point
+    return radii

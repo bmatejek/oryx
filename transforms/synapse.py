@@ -110,8 +110,8 @@ def JWRSynapses():
         filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
 
         # read the segmentation points for this label and convert to numpy array
-        surface_point_cloud = dataIO.ReadSurfacePoints(prefix, label)
-        segment_point_cloud = set(dataIO.ReadSegmentationPoints(prefix, label))
+        surface_point_cloud = dataIO.ReadPoints(prefix, label, 'surfaces')
+        segment_point_cloud = set(dataIO.ReadPoints(prefix, label, 'segmentations'))
         npoints = len(surface_point_cloud)
 
         np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
@@ -229,7 +229,7 @@ def MedianCoordinate(coordinates):
 
 def SNEMISynapses(prefix):
     # read in the segmentation points
-    segmentations = dataIO.ReadAllSegmentationPoints(prefix)
+    segmentations = dataIO.ReadAllPoints(prefix, 'segmentations')
 
     # read in the synapse h5 file
     with h5py.File('raw_data/synapses/{}/synapses.h5'.format(prefix), 'r') as hf:
