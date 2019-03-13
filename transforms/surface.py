@@ -13,7 +13,7 @@ def Segment2Surface(prefix):
 
     # read in the segmentation data first
     for label in labels:
-        point_cloud = set(dataIO.ReadSegmentationPoints(prefix, label))
+        point_cloud = set(dataIO.ReadPoints(prefix, label, 'segmentations'))
 
         # go through all points and find which are on the surface
         surface_points = []
@@ -22,7 +22,7 @@ def Segment2Surface(prefix):
         zres, yres, xres = dataIO.GridSize(prefix)
 
         for iv in point_cloud:
-            iz = iv / yres * xres
+            iz = iv / (yres * xres)
             iy = (iv - iz * yres * xres) / xres
             ix = iv % xres
 
@@ -49,7 +49,6 @@ def Segment2Surface(prefix):
             if iz < zres - 1:
                 neighbor_index = (iz + 1) * yres * xres + iy * xres + ix
                 if not neighbor_index in point_cloud: surface = True
-
             if surface: surface_points.append(iv)
 
         surface_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
