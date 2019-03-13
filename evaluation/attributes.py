@@ -50,7 +50,7 @@ def EvaluateRadii(prefix, label):
     surface_point_cloud = np.array(dataIO.ReadPoints(prefix, label, 'surfaces'), dtype=np.int64)    
     radii = dataIO.ReadRadii(prefix, label)
     
-    mean_error = 0.0
+    mean_absolute_error = 0.0
 
     for index in radii:
         print '{}/{}'.format(index, len(radii))
@@ -59,6 +59,6 @@ def EvaluateRadii(prefix, label):
         
         # find the nearest point on the surface
         minimum_distance = FindNearestSurfacePoint(index, surface_point_cloud, grid_size, resolution)
-        mean_error += abs(radius - minimum_distance)
+        mean_absolute_error += abs(radius - minimum_distance)
 
-    print mean_error / len(radii)
+    print 'Mean Absolute Error: {}'.format(mean_absolute_error / len(radii))
