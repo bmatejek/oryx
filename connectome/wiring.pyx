@@ -9,16 +9,20 @@ import numpy as np
 
 
 
-cdef extern from 'cpp-wiring.h':
-    void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_table_directory)
+from oryx.utilities import dataIO
 
-cdef extern from 'cpp-dijkstra.h':
-    void CppPostProcess(const char *prefix, long label)
+
+
+cdef extern from 'cpp-wiring.h':
+    void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory)
+    void CppSkeletonRefinement(const char *prefix, long label)
+    void CppGenerateWidths(const char *prefix, long label, double resolution[3])
+
 
 
 
 # extract the wiring diagram for this prefix and label
-def ExtractWiringDiagram(prefix, label):
+def GenerateSkeleton(prefix, label):
     # start running time statistics
     start_time = time.time()
 
@@ -26,20 +30,29 @@ def ExtractWiringDiagram(prefix, label):
     lut_directory = os.path.dirname(__file__)
 
     # call the topological skeleton algorithm
-    CppExtractWiringDiagram(prefix, label, lut_directory)
+    CppSkeletonGeneration(prefix, label, lut_directory)
 
+    # generate the widths 
+    cdef np.ndarray[double, ndim=1, mode='c'] cpp_resolution = np.ascontiguousarray(dataIO.Resolution(prefix))
+    CppGenerateWidths(prefix, label, &(cpp_resolution[0]))
+    
     # print out statistics for wiring extraction
-    print 'Extracted wiring diagram in {:0.2f} seconds'.format(time.time() - start_time)
+    print 'Generated skeletons in {:0.2f} seconds'.format(time.time() - start_time)
 
 
 
 # post process the volume to correct segment errors
-def PostProcess(prefix, label):
+def RefineSkeleton(prefix, label):
     # start running time statistics
     start_time = time.time()
 
     # call the post processing algorithm
-    CppPostProcess(prefix, label)
+    CppSkeletonRefinement(prefix, label)
 
     # print out statistics 
-    print 'Ran Dijkstra postprocessing in {:0.2f} seconds'.format(time.time() - start_time)
+    print 'Refined skeletons in {:0.2f} seconds'.format(time.time() - start_time)
+
+
+# function to actual extract the wiring diagram for this prefix
+def ExtractWiringDiagram(prefix):
+    pass

@@ -1,12 +1,5 @@
 /* c++ file to extract wiring diagram */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-#include <set>
-#include <string.h>
-#include <unordered_map>
-#include <ctime>
 #include "cpp-wiring.h"
 
 
@@ -14,6 +7,8 @@
 // constant variables
 
 static const int lookup_table_size = 1 << 23;
+
+// DO NOT CHANGE THIS ORDERING
 static const int NTHINNING_DIRECTIONS = 6;
 static const int UP = 0;
 static const int DOWN = 1;
@@ -27,16 +22,7 @@ static const int WEST = 5;
 // lookup tables
 
 static unsigned char *lut_simple;
-
-
-
-// global variables
-
-static long grid_size[3];
-static long nentries;
-static long sheet_size;
-static long row_size;
-static std::unordered_map<long, char> segment;
+static std::unordered_map<long, char> erosions;
 
 
 
@@ -46,7 +32,7 @@ static long long_mask[26];
 static unsigned char char_mask[8];
 static long n26_offsets[26];
 static long n6_offsets[6];
-static bool movie = false;
+static long reverse_direction[6];
 
 static void set_long_mask(void)
 {
@@ -124,90 +110,24 @@ static void PopulateOffsets(void)
     n26_offsets[24] = grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X];
     n26_offsets[25] = grid_size[OR_Y] * grid_size[OR_X] + grid_size[OR_X] + 1;
 
-    n6_offsets[0] = -1 * grid_size[OR_Y] * grid_size[OR_X];
-    n6_offsets[1] = -1 * grid_size[OR_X];
-    n6_offsets[2] = -1;
-    n6_offsets[3] = +1;
-    n6_offsets[4] = grid_size[OR_X];
-    n6_offsets[5] = grid_size[OR_Y] * grid_size[OR_X];
-}
+    // use this order to go UP, DOWN, NORTH, SOUTH, EAST, WEST
+    // DO NOT CHANGE THIS ORDERING
+    n6_offsets[0] = -1 * grid_size[OR_X];
+    n6_offsets[1] = grid_size[OR_X];
+    n6_offsets[2] = -1 * grid_size[OR_Y] * grid_size[OR_X];
+    n6_offsets[3] = grid_size[OR_Y] * grid_size[OR_X];
+    n6_offsets[4] = +1;
+    n6_offsets[5] = -1;
 
-
-
-//////////////////////////////////////
-//// COORDINATE UTILITY FUNCTIONS ////
-//////////////////////////////////////
-
-static void IndexToIndices(long iv, long &ix, long &iy, long &iz)
-{
-    iz = iv / sheet_size;
-    iy = (iv - iz * sheet_size) / row_size;
-    ix = iv % row_size;
-}
-
-
-
-static long IndicesToIndex(long ix, long iy, long iz)
-{
-    return iz * sheet_size + iy * row_size + ix;
-}
-
-
-///////////////////////////////////////
-//// POINT CLOUD UTILITY FUNCTIONS ////
-///////////////////////////////////////
-
-/* conventient I/O function */
-static void PopulatePointCloud(const char *prefix, const char *dataset, long label) {
-    // read in the point cloud for this label
-    char filename[4096];
-    sprintf(filename, "%s/%s/%06ld.pts", dataset, prefix, label);
-
-    FILE *fp = fopen(filename, "rb");
-    if (!fp) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-
-    long input_grid_size[3];
-    long npoints;
-    if (fread(&(input_grid_size[OR_Z]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-    if (fread(&(input_grid_size[OR_Y]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-    if (fread(&(input_grid_size[OR_X]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-    if (fread(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-
-    // add padding around each segment (only way that populate offsets works!!)
-    grid_size[OR_Z] = input_grid_size[OR_Z] + 2;
-    grid_size[OR_Y] = input_grid_size[OR_Y] + 2;
-    grid_size[OR_X] = input_grid_size[OR_X] + 2;
-    
-    // set global indexing parameters (do here since for loop calls IndicesToIndex)
-    nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
-    sheet_size = grid_size[OR_Y] * grid_size[OR_X];
-    row_size = grid_size[OR_X];
-
-    for (long ip = 0; ip < npoints; ++ip) {
-        long voxel_index;
-        if (fread(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-
-        long iz = voxel_index / (input_grid_size[OR_Y] * input_grid_size[OR_X]);
-        long iy = (voxel_index - iz * (input_grid_size[OR_Y] * input_grid_size[OR_X])) / input_grid_size[OR_X];
-        long ix = voxel_index % input_grid_size[OR_X];
-
-        //  pad the location by one
-        iz += 1; iy += 1; ix += 1;
-
-        // find the new voxel index
-        long iv = IndicesToIndex(ix, iy, iz);
-
-        if (!strcmp(dataset, "segmentations")) {
-            segment[iv] = 1;
-        }
-        else if (!strcmp(dataset, "synapses")) {
-            segment[iv] = 3;
-        }
-        else { fprintf(stderr, "Unrecognized point cloud: %s.\n", dataset); exit(-1); }
-    }
-
-    // close file
-    fclose(fp);
+    // reverse direction points in the opposite direction
+    // so erosions points back to the previous node
+    // DO NOT CHANGE THIS ORDERING
+    reverse_direction[0] = 1;
+    reverse_direction[1] = 0;
+    reverse_direction[2] = 3;
+    reverse_direction[3] = 2;
+    reverse_direction[4] = 5;
+    reverse_direction[5] = 4;
 }
 
 
@@ -383,19 +303,30 @@ static void CollectSurfaceVoxels(void)
     for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
         // all of these elements are either 1 or 3 and in the segment
         long index = it->first;
-        // skip if this is an anchor point - irrelevant if boundary
-        if (it->second == 3) continue;
 
         long ix, iy, iz;
         IndexToIndices(index, ix, iy, iz);
-
         // check the 6 neighbors
         for (long iv = 0; iv < NTHINNING_DIRECTIONS; ++iv) {
             long neighbor_index = index + n6_offsets[iv];
+
+            long ii, ij, ik;
+            IndexToIndices(neighbor_index, ii, ij, ik);
+            
+            // skip the fake boundary elements
+            if ((ii == 0) or (ii == grid_size[OR_X] - 1)) continue;
+            if ((ij == 0) or (ij == grid_size[OR_Y] - 1)) continue;
+            if ((ik == 0) or (ik == grid_size[OR_Z] - 1)) continue;
+            
             if (segment.find(neighbor_index) == segment.end()) {
-                // this location is a boundary so create a surface voxel and exit
-                it->second = 2;
+                // this location is a boundary so create a surface voxel and break
+                // cannot update it->second if it is synapse so need this test!!
+                if (it->second == 1) it->second = 2;
+
                 NewSurfaceVoxel(index, ix, iy, iz);
+
+                // note this location as surface in erosions list
+                erosions[index] = -1;
                 break;
             }
         }
@@ -436,39 +367,15 @@ static void DetectSimpleBorderPoints(PointList *deletable_points, int direction)
         long iy = LE->iy;
         long iz = LE->iz;
 
-        // not a synapse endpoint
+        // not a synapse endpoint (need this here since endpoints are on the list of surfaces)
         // this will only be called on things on the surface already so already in unordered_map
         if (segment[iv] == 2) {
             long value = 0;
-            switch (direction) {
-                // is the neighbor in the corresponding direction not in the segment
-                // some of these keys will not exist but will default to 0 value
-                // the search region retracts in from the boundary so limited memory overhead
-                case UP: {
-                    value = segment[IndicesToIndex(ix, iy - 1, iz)];
-                    break;
-                }
-                case DOWN: {
-                    value = segment[IndicesToIndex(ix, iy + 1, iz)];
-                    break;
-                }
-                case NORTH: {
-                    value = segment[IndicesToIndex(ix, iy, iz - 1)];
-                    break;
-                }
-                case SOUTH: {
-                    value = segment[IndicesToIndex(ix, iy, iz + 1)];
-                    break;
-                }
-                case EAST: {
-                    value = segment[IndicesToIndex(ix + 1, iy, iz)];
-                    break;
-                }
-                case WEST: {
-                    value = segment[IndicesToIndex(ix - 1, iy, iz)];
-                    break;
-                }
-            }
+            // is the neighbor in the corresponding direction not in the segment
+            // some of these keys will not exist but will default to 0 value
+            // the search region retracts in from the boundary so limited memory overhead
+            // the n6_offsets are in the order UP, DOWN, NORTH, SOUTH, EAST, WEST
+            value = segment[iv + n6_offsets[direction]];
 
             // see if the required point belongs to a different segment
             if (!value) {
@@ -506,7 +413,7 @@ static long ThinningIterationStep(void)
         while (deletable_points.length) {
             Voxel voxel = GetFromList(&deletable_points, &ptr);
 
-            long iv = voxel.iv;
+            long index = voxel.iv;
             long ix = voxel.ix;
             long iy = voxel.iy;
             long iz = voxel.iz;
@@ -514,32 +421,25 @@ static long ThinningIterationStep(void)
             unsigned int neighbors = Collect26Neighbors(ix, iy, iz);
             if (Simple26_6(neighbors)) {
                 // delete the simple point
-                segment[iv] = 0;
+                segment[index] = 0;
 
                 // add the new surface voxels
-                if (segment[IndicesToIndex(ix - 1, iy, iz)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix - 1, iy, iz), ix - 1, iy, iz);
-                    segment[IndicesToIndex(ix - 1, iy, iz)] = 2;
-                }
-                if (segment[IndicesToIndex(ix + 1, iy, iz)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix + 1, iy, iz), ix + 1, iy, iz);
-                    segment[IndicesToIndex(ix + 1, iy, iz)] = 2;
-                }
-                if (segment[IndicesToIndex(ix, iy - 1, iz)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix, iy - 1, iz), ix, iy - 1, iz);
-                    segment[IndicesToIndex(ix, iy - 1, iz)] = 2;
-                }
-                if (segment[IndicesToIndex(ix, iy + 1, iz)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix, iy + 1, iz), ix, iy + 1, iz);
-                    segment[IndicesToIndex(ix, iy + 1, iz)] = 2;
-                }
-                if (segment[IndicesToIndex(ix, iy, iz - 1)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix, iy, iz - 1), ix, iy, iz - 1);
-                    segment[IndicesToIndex(ix, iy, iz - 1)] = 2;
-                }
-                if (segment[IndicesToIndex(ix, iy, iz + 1)] == 1) {
-                    NewSurfaceVoxel(IndicesToIndex(ix, iy, iz + 1), ix, iy, iz + 1);
-                    segment[IndicesToIndex(ix, iy, iz + 1)] = 2;
+                for (long ip = 0; ip < NTHINNING_DIRECTIONS; ++ip) {
+                    long neighbor_index = index + n6_offsets[ip];
+
+                    // previously not on the surface but is in the object
+                    if (segment[neighbor_index] && erosions.find(neighbor_index) == erosions.end()) {
+
+                        long iu, iv, iw;
+                        IndexToIndices(neighbor_index, iu, iv, iw);
+                        NewSurfaceVoxel(neighbor_index, iu, iv, iw);
+                        // do not convert isthmuses to surface points
+                        if (segment[neighbor_index] == 1) segment[neighbor_index] = 2;
+                        // use ip here so it points to voxel before it 
+                        // need to reverse the direction so that we are point back at the previous voxel
+                        // DO NOT CHANGE
+                        erosions[neighbor_index] = reverse_direction[ip];
+                    }
                 }
 
                 // remove this from the surface voxels
@@ -564,91 +464,36 @@ static void SequentialThinning(const char *prefix, long label)
     int iteration = 0;
     long changed = 0;
     do {
-        if (movie) {
-            char movie_filename[4096];
-            sprintf(movie_filename, "movies/%s/%06ld-%04ld.pts", prefix, label, iteration);
-
-            FILE *fp = fopen(movie_filename, "wb");
-            if (!fp) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-
-            long zres = grid_size[OR_Z] - 2;
-            long yres = grid_size[OR_Y] - 2;
-            long xres = grid_size[OR_X] - 2;
-            long npoints = 0;
-            for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
-                if (it->second == 2 or it->second == 3) npoints += 1;
-            }
-
-            if (fwrite(&zres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-            if (fwrite(&yres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-            if (fwrite(&xres, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-            if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-
-            for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
-                if (it->second == 2 or it->second == 3) {
-                    long iv = it->first;
-
-                    long ix, iy, iz;
-                    IndexToIndices(iv, ix, iy, iz);
-
-                    // remove padding
-                    ix -= 1; iy -= 1; iz -= 1;
-
-                    iv = iz * yres * xres + iy * xres + ix;
-                    if (fwrite(&iv, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", movie_filename); exit(-1); }
-                }
-            }
-
-            fclose(fp);
-        }
-
         changed = ThinningIterationStep();
         iteration++;
+        printf("  Iteration %d deleted %ld points\n", iteration, changed);
     } while (changed);
 }
 
 
-static bool IsEndpoint(long iv)
-{
-    long ix, iy, iz;
-    IndexToIndices(iv, ix, iy, iz);
-
-    short nneighbors = 0;
-    for (long iw = iz - 1; iw <= iz + 1; ++iw) {
-        for (long iv = iy - 1; iv <= iy + 1; ++iv) {
-            for (long iu = ix - 1; iu <= ix + 1; ++iu) {
-                long linear_index = IndicesToIndex(iu, iv, iw);
-                // may create new entries in unordered map but does not matter
-                // since the search space decreases
-                if (segment[linear_index]) nneighbors++;
-            }
-        }
-    }
-
-    // return if there is one neighbor (other than iv) that is 1
-    if (nneighbors <= 2) return true;
-    else return false;
-}
 
 
-
-void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_table_directory)
+void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory)
 {
     // start timing statistics
     clock_t start_time = clock();
 
+    // create (and clear) the global variables
+    segment = std::unordered_map<long, char>(10000000);
+    synapses = std::unordered_set<long>();
+    erosions = std::unordered_map<long, char>(10000000);
+
     // initialize all of the lookup tables
     InitializeLookupTables(lookup_table_directory);
-    
-    // initalize the unordered map
-    segment = std::unordered_map<long, char>(10000000);
 
     // populate the point clouds with segment voxels and anchor points
-    PopulatePointCloud(prefix, "segmentations", label);
-    PopulatePointCloud(prefix, "synapses", label);
-
+    CppPopulatePointCloud(prefix, "segmentations", label);
+    CppPopulatePointCloud(prefix, "synapses", label);
+    CppPopulatePointCloud(prefix,  "somae", label);
+    
     // get the number of points
     long initial_points = segment.size();
+    printf("Label %ld initial points: %ld\n", label, initial_points);
 
     // can  use offsets since all paramters are offset by 1
     // needs to happen after PopulatePointCloud()
@@ -667,7 +512,7 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
 
     // create an output file for the points
     char output_filename[4096];
-    sprintf(output_filename, "thinning/%s/%06ld.pts", prefix, label);
+    sprintf(output_filename, "skeletons/%s/%06ld.pts", prefix, label);
 
     FILE *wfp = fopen(output_filename, "wb");
     if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
@@ -683,6 +528,8 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
     if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
     if (fwrite(&num, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
+    printf("  Remaining voxels: %ld\n", num);
+
     while (surface_voxels.first != NULL) {
         // get the surface voxels
         ListElement *LE = (ListElement *) surface_voxels.first;
@@ -694,7 +541,6 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
         long iv = iz * grid_size[OR_X] * grid_size[OR_Y] + iy * grid_size[OR_X] + ix;
 
         // endpoints are written as negatives
-        if (IsEndpoint(LE->iv)) iv = -1 * iv;
         if (fwrite(&iv, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
         // remove this voxel
@@ -720,4 +566,81 @@ void CppExtractWiringDiagram(const char *prefix, long label, const char *lookup_
 
     // close file
     fclose(tfp);
+}
+
+
+
+void CppGenerateWidths(const char *prefix, long label, double resolution[3])
+{
+    // create (and clear) the global variable segment to read in thinning only
+    segment = std::unordered_map<long, char>();
+
+    // populate the point clouds with segment voxels and anchor points
+    CppPopulatePointCloud(prefix, "skeletons", label);
+    
+    // can  use offsets since all paramters are offset by 1
+    // needs to happen after PopulatePointCloud()
+    PopulateOffsets();
+
+    // create an output file for the points
+    char output_filename[4096];
+    sprintf(output_filename, "radii/%s/%06ld.pts", prefix, label);
+
+    FILE *wfp = fopen(output_filename, "wb");
+    if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+
+    // unpad the grid size
+    grid_size[OR_Z] -= 2;
+    grid_size[OR_Y] -= 2;
+    grid_size[OR_X] -= 2;
+
+    // write the number of elements
+    long nelements = segment.size();
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    if (fwrite(&nelements, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+
+    // repad the grid size for iterations
+    grid_size[OR_Z] += 2;
+    grid_size[OR_Y] += 2;
+    grid_size[OR_X] += 2;
+
+    // iterate throught the skeleton endpoints and trace back to the surface
+    for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
+        long current_index = it->first;
+        
+        // convert to cartesian coordinates
+        long ix, iy, iz;
+        IndexToIndices(current_index, ix, iy, iz);
+
+        while (erosions[current_index] != -1) {
+            // get the direction to the next node
+            long direction = erosions[current_index];
+
+            // update the current index
+            current_index = current_index + n6_offsets[direction];
+        }
+
+        // convert to cartesian coordinates
+        long iu, iv, iw;
+        IndexToIndices(current_index, iu, iv, iw);
+
+        double xdiff = resolution[OR_X] * (ix - iu);
+        double ydiff = resolution[OR_Y] * (iy - iv);
+        double zdiff = resolution[OR_Z] * (iz - iw);
+
+        double distance = sqrt(xdiff * xdiff + ydiff * ydiff + zdiff * zdiff);
+
+        // unpad the cartesian coordinates
+        ix--; iy--; iz--;
+        // find the corrected linear index
+        long index = iz * (grid_size[OR_X] - 2) * (grid_size[OR_Y] - 2) + iy * (grid_size[OR_X] - 2) + ix;
+
+        if (fwrite(&index, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+        if (fwrite(&distance, sizeof(double), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+    }
+
+    // close the file
+    fclose(wfp);
 }
