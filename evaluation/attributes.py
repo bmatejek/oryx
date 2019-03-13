@@ -52,8 +52,8 @@ def EvaluateRadii(prefix, label):
     
     mean_absolute_error = 0.0
 
-    for index in radii:
-        print '{}/{}'.format(index, len(radii))
+    for iv, index in enumerate(radii):
+        if not (iv % 1000): print '{}/{}'.format(iv + 1, len(radii))
         # get the radius at this index
         radius = radii[index]
         
