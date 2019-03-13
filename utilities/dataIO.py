@@ -84,8 +84,8 @@ def ReadRadii(prefix, label):
         assert (xres == prefix_xres)
 
         for _ in range(nelements):
-            index, neighbor_index, radius, = struct.unpack('qqd', fd.read(24))
-            radii[index] = (neighbor_index, radius)
+            index, radius, = struct.unpack('qd', fd.read(16))
+            radii[index] = radius
 
     # return the dictionary of radii for each skeleton point
     return radii
