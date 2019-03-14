@@ -11,9 +11,10 @@
 // function calls across cpp files
 
 void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory);
-void CppSkeletonRefinement(const char *prefix, long label);
-void CppPopulatePointCloud(const char *prefix, const char *dataset, long label);
 void CppGenerateWidths(const char *prefix, long label, double resolution[3]);
+void CppSkeletonRefinement(const char *prefix, long label, double resolution[3]);
+void CppPopulatePointCloud(const char *prefix, const char *dataset, long label);
+
 
 
 

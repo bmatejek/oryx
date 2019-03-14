@@ -1,4 +1,5 @@
 import math
+import random
 
 
 
@@ -52,7 +53,10 @@ def EvaluateRadii(prefix, label):
     
     mean_absolute_error = 0.0
 
+    count = 0
     for iv, index in enumerate(radii):
+        if random.random() < 0.7: continue
+
         if not (iv % 1000): print '{}/{}'.format(iv + 1, len(radii))
         # get the radius at this index
         radius = radii[index]
@@ -60,5 +64,6 @@ def EvaluateRadii(prefix, label):
         # find the nearest point on the surface
         minimum_distance = FindNearestSurfacePoint(index, surface_point_cloud, grid_size, resolution)
         mean_absolute_error += abs(radius - minimum_distance)
+        count += 1
 
-    print 'Mean Absolute Error: {}'.format(mean_absolute_error / len(radii))
+    print 'Mean Absolute Error: {:0.2f} nanometers'.format(mean_absolute_error / count)

@@ -14,13 +14,13 @@ struct DijkstraData {
 
 
 
-void CppSkeletonRefinement(const char *prefix, long label)
+void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
 {
     // clear the global variables
     segment = std::unordered_map<long, char>();
     synapses = std::unordered_set<long>();
-    static std::unordered_map<long, long> dijkstra_map = std::unordered_map<long, long>();
-    
+    std::unordered_map<long, long> dijkstra_map = std::unordered_map<long, long>();
+
     // populate the point clouds with segment voxels and anchor points
     CppPopulatePointCloud(prefix, "skeletons", label);
     CppPopulatePointCloud(prefix, "synapses", label);
@@ -79,9 +79,9 @@ void CppSkeletonRefinement(const char *prefix, long label)
                     DijkstraData *neighbor_data = &(voxel_data[dijkstra_index]);
 
                     // find the distance between these voxels
-                    long deltaz = (iw - iz);
-                    long deltay = (iv - iy);
-                    long deltax = (iu - ix);
+                    long deltaz = resolution[OR_Z] * (iw - iz);
+                    long deltay = resolution[OR_Y] * (iv - iy);
+                    long deltax = resolution[OR_X] * (iu - ix);
 
                     // get the distance between (ix, iy, iz) and (iu, iv, iw)
                     double distance = sqrt(deltax * deltax + deltay * deltay + deltaz * deltaz);
@@ -134,27 +134,48 @@ void CppSkeletonRefinement(const char *prefix, long label)
         }
     }
     
-    long nskeleton_points = wiring_diagram.size();
     char wiring_filename[4096];
     sprintf(wiring_filename, "connectomes/%s/%06ld.pts", prefix, label);
+    char distance_filename[4096];
+    sprintf(distance_filename, "distances/%s/%06ld.pts", prefix, label);
 
-    FILE *fp = fopen(wiring_filename, "wb"); 
-    if (!fp) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
-    
+    FILE *wfp = fopen(wiring_filename, "wb"); 
+    if (!wfp) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+    FILE *dfp = fopen(distance_filename, "wb");
+    if (!dfp) { fprintf(stderr, "Failed to write to %s.\n", distance_filename); exit(-1); }
+
     // remove padding for file write
     grid_size[OR_Z] -= 2;
     grid_size[OR_Y] -= 2;
     grid_size[OR_X] -= 2;
-    
-    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
-    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
-    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
-    if (fwrite(&nskeleton_points, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+
+    long nskeleton_points = wiring_diagram.size();    
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+    if (fwrite(&nskeleton_points, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", distance_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", distance_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", distance_filename); exit(-1); }
+    if (fwrite(&nskeleton_points, sizeof(long), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", distance_filename); exit(-1); }
+
 
     for (std::unordered_set<long>::iterator it = wiring_diagram.begin(); it != wiring_diagram.end(); ++it) {
         long voxel_index = *it;
-        if (fwrite(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+        if (fwrite(&voxel_index, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+
+        // get the corresponding neighbor data
+        long dijkstra_index = dijkstra_map[voxel_index];
+        DijkstraData *dijkstra_data = &(voxel_data[dijkstra_index]);
+        double distance = dijkstra_data->distance;
+
+        if (fwrite(&voxel_index, sizeof(long), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
+        if (fwrite(&distance, sizeof(double), 1, dfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
     }
-    fclose(fp);
+    
+    fclose(wfp);
+    fclose(dfp);
+
     delete[] voxel_data;
 }

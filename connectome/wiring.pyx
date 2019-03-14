@@ -15,7 +15,7 @@ from oryx.utilities import dataIO
 
 cdef extern from 'cpp-wiring.h':
     void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory)
-    void CppSkeletonRefinement(const char *prefix, long label)
+    void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     void CppGenerateWidths(const char *prefix, long label, double resolution[3])
 
 
@@ -46,8 +46,11 @@ def RefineSkeleton(prefix, label):
     # start running time statistics
     start_time = time.time()
 
+    # get the resolution for this data
+    cdef np.ndarray[double, ndim=1, mode='c'] cpp_resolution = np.ascontiguousarray(dataIO.Resolution(prefix))
+
     # call the post processing algorithm
-    CppSkeletonRefinement(prefix, label)
+    CppSkeletonRefinement(prefix, label, &(cpp_resolution[0]))
 
     # print out statistics 
     print 'Refined skeletons in {:0.2f} seconds'.format(time.time() - start_time)
