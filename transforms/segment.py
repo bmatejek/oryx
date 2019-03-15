@@ -13,9 +13,9 @@ from oryx.utilities.constants import *
 
 
 
-############################
-### FIB25 TRANSFORM CODE ###
-############################
+#######################################
+### ZEBRAFINCH/FIB25 TRANSFORM CODE ###
+#######################################
 
 @jit(nopython=True)
 def SectionExtractPointCloud(data, z_start):
@@ -44,7 +44,7 @@ def SectionExtractPointCloud(data, z_start):
 
 
 
-def H5Section2PointCloud(prefix, filename, section, section_width):
+def H5Section2PointCloud(prefix, filename, section_index, section_width):
     # get grid size as filler for saved files
     zres, yres, xres = dataIO.GridSize(prefix)
 
@@ -53,7 +53,7 @@ def H5Section2PointCloud(prefix, filename, section, section_width):
         data = np.array(hf['main'])
 
     # z index should not start at zero most times
-    z_start = section_width * section
+    z_start = section_width * section_index
     point_clouds = SectionExtractPointCloud(data, z_start)
 
     for label, point_cloud in enumerate(point_clouds):
@@ -61,7 +61,7 @@ def H5Section2PointCloud(prefix, filename, section, section_width):
         if not len(point_cloud): continue
 
         # write the point cloud to file
-        output_filename = 'segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section, label)
+        output_filename = 'segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section_index, label)
         with open(output_filename, 'w') as fd:
             npoints = len(point_cloud)
             fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
