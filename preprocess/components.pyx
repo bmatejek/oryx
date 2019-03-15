@@ -39,7 +39,7 @@ def JWRPreprocess(label):
     # save this file
     output_filename = 'raw_data/segmentations/JWR/cell{:03d}_connected_d.h5'.format(label)
     with h5py.File(output_filename, 'w') as hf:
-        hf.create_dataset('main', data=cpp_data)
+        hf.create_dataset('main', data=cpp_data, compression='gzip')
 
     
     
