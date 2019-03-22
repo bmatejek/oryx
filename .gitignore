@@ -105,5 +105,5 @@ venv.bak/
 
 connectome/wiring.cpp
 verify/segment.cpp
-preprocess/component.cpp
+preprocess/components.cpp
 .vscode/*
