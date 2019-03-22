@@ -45,7 +45,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         // this is the soma
         if (it->second == 4) source_index = index;
     }
-
+    printf("%ld\n", source_index);
     // initialize the priority queue
     DijkstraData tmp;
     MinBinaryHeap<DijkstraData *> voxel_heap(&tmp, (&tmp.distance), segment.size());
@@ -105,7 +105,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
             }
         }
     }
-
+  
     std::unordered_set<long> wiring_diagram = std::unordered_set<long>();
 
     // go through all of the synapses and add all of the skeleton points to the source

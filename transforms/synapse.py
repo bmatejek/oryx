@@ -93,14 +93,17 @@ def Fib25Synapses():
 ### JWR TRANSFORM CODE ###
 ##########################
 
-def JWRSynapses():
-    prefix = 'JWR'
-    
+def JWRandZebraFinchSynapses(prefix):
     # get the grid size to convert to linear coordinates
     zres, yres, xres = dataIO.GridSize(prefix)
     
     # JWR has a downsampled segmentation
-    downsample_rate = (1, 8, 8)
+    if prefix == 'JWR':
+        downsample_rate = (1, 8, 8)
+        xyz_coordinates = True
+    else:
+        downsample_rate = (1, 1, 1)
+        xyz_coordinates = False
 
     # get the labels for this dataset
     labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
@@ -131,9 +134,14 @@ def JWRSynapses():
                 # remove the new line and separate parts
                 line = line.strip().split()
 
-                ix = int(line[0]) / downsample_rate[OR_X]
-                iy = int(line[1]) / downsample_rate[OR_Y]
-                iz = int(line[2]) / downsample_rate[OR_Z]
+                if xyz_coordinates:
+                    ix = int(line[0]) / downsample_rate[OR_X]
+                    iy = int(line[1]) / downsample_rate[OR_Y]
+                    iz = int(line[2]) / downsample_rate[OR_Z]
+                else:
+                    iz = int(line[0]) / downsample_rate[OR_X]
+                    iy = int(line[1]) / downsample_rate[OR_Y]
+                    ix = int(line[2]) / downsample_rate[OR_Z]
 
                 # if already in segment there are no problems
                 iv = iz * yres * xres + iy * xres + ix
