@@ -2,7 +2,9 @@ import os
 import struct
 import h5py
 import math
+import glob
 import scipy.spatial
+import time
 
 
 import numpy as np
@@ -93,7 +95,7 @@ def Fib25Synapses():
 ### JWR TRANSFORM CODE ###
 ##########################
 
-def JWRandZebraFinchSynapses(prefix):
+def JWRandZebrafinchSynapses(prefix):
     # get the grid size to convert to linear coordinates
     zres, yres, xres = dataIO.GridSize(prefix)
     
@@ -106,11 +108,19 @@ def JWRandZebraFinchSynapses(prefix):
         xyz_coordinates = False
 
     # get the labels for this dataset
-    labels = [int(label[:-4]) for label in sorted(os.listdir('segmentations/{}'.format(prefix)))]
+    labels = [int(label.split('/')[-1][:-4]) for label in sorted(glob.glob('surfaces/{}/*.pts'.format(prefix)))]
 
     for label in labels:
+        start_time = time.time()
         # get the original filename
-        filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
+        if prefix == 'JWR':
+            filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
+        else: 
+            filename = 'raw_data/synapses/Zebrafinch/syn_{:04d}.txt'.format(label)
+
+        # save the synapses in the correct form
+        output_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
+        if os.path.exists(output_filename): continue
 
         # read the segmentation points for this label and convert to numpy array
         surface_point_cloud = dataIO.ReadPoints(prefix, label, 'surfaces')
@@ -165,17 +175,14 @@ def JWRandZebraFinchSynapses(prefix):
                 mse += distance
                 
                 synapses.append(closest_point)
-                
-        print 'Mean Squared Error: {}'.format(mse / len(synapses))
 
-        # save the synapses in the correct form
-        filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
-
-        with open(filename, 'wb') as fd:
+        with open(output_filename, 'wb') as fd:
             nsynapses = len(synapses)
 
             fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
             fd.write(struct.pack('%sq' % nsynapses, *synapses))
+                
+        print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), label, time.time() - start_time)
 
 
 
