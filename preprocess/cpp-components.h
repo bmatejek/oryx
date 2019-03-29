@@ -3,7 +3,7 @@
 
 
 // function calls across cpp files
-void CppForceConnectivity(char *data, long grid_size[3], long soma_index);
+void CppForceConnectivity(char *prefix, long label);
 
 
 // universal variables and functions

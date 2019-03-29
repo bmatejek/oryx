@@ -5,12 +5,17 @@
 #include <stack>
 #include <unordered_set>
 #include "cpp-components.h"
+#include <string.h>
 
 
 
+static long grid_size[3];
 static long nentries;
 static long row_size;
 static long sheet_size;
+static std::unordered_set<long> segment;
+static long soma_index;
+
 
 
 
@@ -29,20 +34,67 @@ static long IndicesToIndex(long ix, long iy, long iz)
 }
 
 
+///////////////////////////////////////
+//// POINT CLOUD UTILITY FUNCTIONS ////
+///////////////////////////////////////
 
-void CppForceConnectivity(char *segmentation, long grid_size[3], long soma_index)
+/* conventient I/O function */
+void CppPopulatePointCloud(const char *prefix, const char *dataset, long label) {
+    // read in the point cloud for this label
+    char filename[4096];
+    sprintf(filename, "%s/%s/%06ld.pts", dataset, prefix, label);
+
+    FILE *fp = fopen(filename, "rb");
+    if (!fp) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+
+    long npoints;
+    if (fread(&(grid_size[OR_Z]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+    if (fread(&(grid_size[OR_Y]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+    if (fread(&(grid_size[OR_X]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+    if (fread(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+    
+    // set global indexing parameters (do here since for loop calls IndicesToIndex)
+    nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
+    sheet_size = grid_size[OR_Y] * grid_size[OR_X];
+    row_size = grid_size[OR_X];
+
+    for (long ip = 0; ip < npoints; ++ip) {
+        long voxel_index;
+        if (fread(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
+
+        long iz = voxel_index / (grid_size[OR_Y] * grid_size[OR_X]);
+        long iy = (voxel_index - iz * (grid_size[OR_Y] * grid_size[OR_X])) / grid_size[OR_X];
+        long ix = voxel_index % grid_size[OR_X];
+
+        // find the new voxel index
+        long iv = IndicesToIndex(ix, iy, iz);
+
+        if (!strcmp(dataset, "original_data/segmentations")) {
+          segment.insert(iv);
+        }
+        else if (!strcmp(dataset, "somae")) {
+          soma_index = iv;
+        }
+        else { fprintf(stderr, "Unrecognized point cloud: %s.\n", dataset); exit(-1); }
+    }
+
+    // close file
+    fclose(fp);
+}
+
+
+
+void CppForceConnectivity(char *prefix, long label)
 {
-  // create the new components array
-  nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
-  sheet_size = grid_size[OR_Y] * grid_size[OR_X];
-  row_size = grid_size[OR_X];
+  // create new segment set
+  segment = std::unordered_set<long>();
 
-  if (!segmentation[soma_index]) { fprintf(stderr, "Error in the soma index\n"); exit(-1); }
+  CppPopulatePointCloud(prefix, "original_data/segmentations", label);
+  CppPopulatePointCloud(prefix, "somae", label);
+
+  // potential error in soma location 
+  if (segment.find(soma_index) == segment.end()) return; 
   
-  long nonzero = 0;
-  for (long iv = 0; iv < nentries; ++iv)
-    if (segmentation[iv]) nonzero++;
-
   std::stack<long> voxels = std::stack<long>();
   voxels.push(soma_index);
 
@@ -61,7 +113,7 @@ void CppForceConnectivity(char *segmentation, long grid_size[3], long soma_index
     // label this voxel as visited
     visited.insert(voxel);
 
-    // add the six neighbors to the queue
+    // add the twenty six neighbors to the queue
     long ix, iy, iz;
     IndexToIndices(voxel, ix, iy, iz);
 
@@ -75,7 +127,7 @@ void CppForceConnectivity(char *segmentation, long grid_size[3], long soma_index
           if (neighbor == voxel) continue;
 
           // skip background voxels
-          if (!segmentation[neighbor]) continue;
+          if (segment.find(neighbor) == segment.end()) continue;
 
           // add this neighbor
           voxels.push(neighbor);
@@ -84,10 +136,20 @@ void CppForceConnectivity(char *segmentation, long grid_size[3], long soma_index
     }
   }
 
-  // update the segmentation data
-  for (long iv = 0; iv < nentries; ++iv)
-    segmentation[iv] = 0;
+  char output_filename[4096];
+  sprintf(output_filename, "segmentations/%s/%06ld.pts", prefix, label);
 
-  for (std::unordered_set<long>::iterator it = visited.begin(); it != visited.end(); ++it) 
-    segmentation[*it] = 1;
+  FILE *fp = fopen(output_filename, "wb");
+  if (!fp) { fprintf(stderr, "Failed to write to %s\n", output_filename); return ; }
+
+  long npoints = visited.size();
+  if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+  if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+  if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+  if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+
+  for (std::unordered_set<long>::iterator it = visited.begin(); it != visited.end(); ++it) {
+    long voxel_index = *it;
+    if (fwrite(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+  }
 }
