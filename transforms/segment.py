@@ -61,7 +61,7 @@ def H5Section2PointCloud(prefix, filename, section_index, section_width):
         if not len(point_cloud): continue
 
         # write the point cloud to file
-        output_filename = 'segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section_index, label)
+        output_filename = 'original_data/segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section_index, label)
         with open(output_filename, 'w') as fd:
             npoints = len(point_cloud)
             fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
@@ -73,7 +73,7 @@ def CombineSectionPointClouds(prefix):
     # get the grid size for this prefix
     zres, yres, xres = dataIO.GridSize(prefix)
 
-    sub_directory = 'segmentations/{}/sections'.format(prefix)
+    sub_directory = 'original_data/segmentations/{}/sections'.format(prefix)
     
     # get the maximum label from the filenames
     max_label = max(int(filename.split('-')[-1][:-4]) for filename in os.listdir(sub_directory)) + 1
@@ -84,7 +84,7 @@ def CombineSectionPointClouds(prefix):
         if not len(filenames): continue
         
         # write the point cloud to this final file
-        output_filename = 'segmentations/{}/{:06d}.pts'.format(prefix, label)
+        output_filename = 'original_data/segmentations/{}/{:06d}.pts'.format(prefix, label)
         with open(output_filename, 'wb') as wfd:
             # write nonsense number of points first and overwrite later
             npoints = 0
@@ -126,7 +126,7 @@ def ExtractJWRPointCloud(data):
 
 
 def JWRPointCloud(label):
-    filename = 'raw_data/segmentations/JWR/cell{:03d}_connected_d.h5'.format(label)
+    filename = 'raw_data/segmentations/JWR/cell{:03d}_d.h5'.format(label)
 
     # open this binary file
     with h5py.File(filename, 'r') as hf:
@@ -141,7 +141,7 @@ def JWRPointCloud(label):
     point_cloud = ExtractJWRPointCloud(data)
 
     # write the point cloud to file
-    output_filename = 'segmentations/JWR/{:06d}.pts'.format(label)
+    output_filename = 'original_data/segmentations/JWR/{:06d}.pts'.format(label)
     with open(output_filename, 'wb') as fd:
         npoints = len(point_cloud)
         fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
