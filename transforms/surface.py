@@ -47,15 +47,17 @@ def FindSurface(point_cloud, zres, yres, xres):
     return surface_points
 
 
-def Segment2Surface(prefix, label):
+def Segment2Surface(prefix, label, first_pass=False):
     # get the grid size for this prefix
     zres, yres, xres = dataIO.GridSize(prefix)
 
-    point_cloud = set(dataIO.ReadPoints(prefix, label, 'segmentations'))
+    if first_pass: point_cloud = set(dataIO.ReadPoints(prefix, label, 'original_data/segmentations'))
+    else: point_cloud = set(dataIO.ReadPoints(prefix, label, 'segmentations'))
     
     surface_points = FindSurface(point_cloud, zres, yres, xres)
     
-    surface_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
+    if first_pass: surface_filename = 'original_data/surfaces/{}/{:06d}.pts'.format(prefix, label)
+    else: surface_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
 
     with open(surface_filename, 'wb') as fd:
         nsurface_points = len(surface_points)
