@@ -20,7 +20,7 @@ from oryx.utilities.constants import *
 ### FIB25 TRANSFORM CODE ###
 ############################
 
-def Fib25Synapses():
+def Fib25Synapses(start_index):
     prefix = 'Fib25'
 
     # get the grid size to convert to linear coordinates
@@ -40,7 +40,7 @@ def Fib25Synapses():
             line = line.strip().split()
             
             # get the id and location
-            segment = int(line[0])
+            segment = int(line[0]) + 1
             iz = int(line[1])
             iy = int(line[2])
             ix = int(line[3])
@@ -63,7 +63,7 @@ def Fib25Synapses():
             line = line.strip().split()
 
             # get the id and location
-            segment = int(line[1])
+            segment = int(line[1]) + 1
             iz = int(line[2])
             iy = int(line[3])
             ix = int(line[4])
@@ -80,53 +80,18 @@ def Fib25Synapses():
             synapses_per_segment[segment].append(iv)
 
     # save all synapses for each label
-    for segment in synapses_per_segment:
-        filename = 'synapses/Fib25/{:06d}.pts'.format(segment)
-        
-        with open(filename, 'wb') as fd:
-            nsynapses = len(synapses_per_segment[segment])
-        
-            fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
-            fd.write(struct.pack('%sq' % nsynapses, *synapses_per_segment[segment]))
-
-
-
-##########################
-### JWR TRANSFORM CODE ###
-##########################
-
-def JWRandZebrafinchSynapses(prefix):
-    # get the grid size to convert to linear coordinates
-    zres, yres, xres = dataIO.GridSize(prefix)
-    
-    # JWR has a downsampled segmentation
-    if prefix == 'JWR':
-        downsample_rate = (1, 8, 8)
-        xyz_coordinates = True
-    else:
-        downsample_rate = (1, 1, 1)
-        xyz_coordinates = False
-
-    # get the labels for this dataset
-    labels = [int(label.split('/')[-1][:-4]) for label in sorted(glob.glob('surfaces/{}/*.pts'.format(prefix)))]
-
-    for label in labels:
-        start_time = time.time()
-        # get the original filename
-        if prefix == 'JWR':
-            filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
-        else: 
-            filename = 'raw_data/synapses/Zebrafinch/syn_{:04d}.txt'.format(label)
-
-        # save the synapses in the correct form
-        output_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
+    for segment in synapses_per_segment:        
+        output_filename = 'synapses/Fib25/{:06d}.pts'.format(segment)
         if os.path.exists(output_filename): continue
 
-        # read the segmentation points for this label and convert to numpy array
-        surface_point_cloud = dataIO.ReadPoints(prefix, label, 'surfaces')
-        segment_point_cloud = set(dataIO.ReadPoints(prefix, label, 'segmentations'))
-        npoints = len(surface_point_cloud)
+        if segment < start_index: continue
 
+        start_time = time.time()
+        
+        # make sure all the synapses fall near the segment
+        surface_point_cloud = dataIO.ReadPoints(prefix, segment, 'surfaces')
+        npoints = len(surface_point_cloud)
+            
         np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
         for index, iv in enumerate(surface_point_cloud):
             iz = iv / (yres * xres)
@@ -139,50 +104,128 @@ def JWRandZebrafinchSynapses(prefix):
         synapses = []
 
         mse = 0.0
-        with open(filename, 'r') as fd:
-            for line in fd:
-                # remove the new line and separate parts
-                line = line.strip().split()
 
-                if xyz_coordinates:
-                    ix = int(line[0]) / downsample_rate[OR_X]
-                    iy = int(line[1]) / downsample_rate[OR_Y]
-                    iz = int(line[2]) / downsample_rate[OR_Z]
-                else:
-                    iz = int(line[0]) / downsample_rate[OR_X]
-                    iy = int(line[1]) / downsample_rate[OR_Y]
-                    ix = int(line[2]) / downsample_rate[OR_Z]
+        for synapse in synapses_per_segment[segment]:
+            iz = synapse / (yres * xres)
+            iy = (synapse - iz * yres * xres) / xres
+            ix = synapse % xres
+            
+            # create a 2D vector for this point
+            vec = np.zeros((1, 3), dtype=np.int32)
+            vec[0,:] = (ix, iy, iz)
 
-                # if already in segment there are no problems
-                iv = iz * yres * xres + iy * xres + ix
-                if iv in segment_point_cloud:
-                    synapses.append(iv)
-                    continue
+            closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
+            
+            point_iz = closest_point / (yres * xres)
+            point_iy = (closest_point - point_iz * yres * xres) / xres
+            point_ix = closest_point % xres
+            
+            distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
+            # skip over clearly wrong synapses
+            if distance > 30: continue
+            mse += distance
                 
-                # create a 2D vector for this point
-                vec = np.zeros((1, 3), dtype=np.int32)
-                vec[0,:] = (ix, iy, iz)
-
-                closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
-
-                point_iz = closest_point / (yres * xres)
-                point_iy = (closest_point - point_iz * yres * xres) / xres
-                point_ix = closest_point % xres
+            synapses.append(closest_point)
                 
-                distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
-                # skip over clearly wrong synapses
-                if distance > 100: continue
-                mse += distance
-                
-                synapses.append(closest_point)
-
+        if not len(synapses): continue
         with open(output_filename, 'wb') as fd:
             nsynapses = len(synapses)
 
             fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
             fd.write(struct.pack('%sq' % nsynapses, *synapses))
+        
+        print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), segment, time.time() - start_time)
+
+        
+
+##########################
+### JWR TRANSFORM CODE ###
+##########################
+
+def JWRandZebrafinchSynapses(prefix, label):
+    # skip if no surface filename
+    surface_filename = 'surfaces/{}/{:06d}.pts'.format(prefix, label)
+    if not os.path.exists(surface_filename): return
+
+    # get the grid size to convert to linear coordinates
+    zres, yres, xres = dataIO.GridSize(prefix)
+    
+    # JWR has a downsampled segmentation
+    if prefix == 'JWR':
+        downsample_rate = (1, 8, 8)
+        xyz_coordinates = True
+    else:
+        downsample_rate = (1, 1, 1)
+        xyz_coordinates = False
+
+    start_time = time.time()
+    # get the original filename
+    if prefix == 'JWR':
+        filename = 'raw_data/synapses/JWR/cell{:03d}_d.txt'.format(label)
+    else: 
+        filename = 'raw_data/synapses/Zebrafinch/syn_{:04d}.txt'.format(label)
+
+    # save the synapses in the correct form
+    output_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
+    if os.path.exists(output_filename): return
+
+    # read the segmentation points for this label and convert to numpy array
+    surface_point_cloud = dataIO.ReadPoints(prefix, label, 'surfaces')
+    npoints = len(surface_point_cloud)
+
+    np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
+    for index, iv in enumerate(surface_point_cloud):
+        iz = iv / (yres * xres)
+        iy = (iv - iz * yres * xres) / xres
+        ix = iv % xres
+
+        np_point_cloud[index,:] = (ix, iy, iz)
+        index += 1
+
+    synapses = []
+
+    mse = 0.0
+    with open(filename, 'r') as fd:
+        for line in fd:
+            # remove the new line and separate parts
+            line = line.strip().split()
+            
+            if xyz_coordinates:
+                ix = int(line[0]) / downsample_rate[OR_X]
+                iy = int(line[1]) / downsample_rate[OR_Y]
+                iz = int(line[2]) / downsample_rate[OR_Z]
+            else:
+                iz = int(line[0]) / downsample_rate[OR_X]
+                iy = int(line[1]) / downsample_rate[OR_Y]
+                ix = int(line[2]) / downsample_rate[OR_Z]
+
+            # if already in segment there are no problems
+            iv = iz * yres * xres + iy * xres + ix
                 
-        print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), label, time.time() - start_time)
+            # create a 2D vector for this point
+            vec = np.zeros((1, 3), dtype=np.int32)
+            vec[0,:] = (ix, iy, iz)
+
+            closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
+            
+            point_iz = closest_point / (yres * xres)
+            point_iy = (closest_point - point_iz * yres * xres) / xres
+            point_ix = closest_point % xres
+                
+            distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
+            # skip over clearly wrong synapses
+            if distance > 30: continue
+            mse += distance
+                
+            synapses.append(closest_point)
+
+    with open(output_filename, 'wb') as fd:
+        nsynapses = len(synapses)
+
+        fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
+        fd.write(struct.pack('%sq' % nsynapses, *synapses))
+                
+    print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), label, time.time() - start_time)
 
 
 
