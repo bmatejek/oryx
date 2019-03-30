@@ -541,7 +541,6 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
         long ix = LE->ix - 1;
         long iv = iz * grid_size[OR_X] * grid_size[OR_Y] + iy * grid_size[OR_X] + ix;
 
-        // endpoints are written as negatives
         if (fwrite(&iv, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
         // remove this voxel
