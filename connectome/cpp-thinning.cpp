@@ -480,7 +480,8 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
 
     // create (and clear) the global variables
     segment = std::unordered_map<long, char>(10000000);
-    synapses = std::unordered_set<long>();
+    // not needed here but for refinement so need to initialize anyway
+    synapses = std::unordered_set<long>(); 
     erosions = std::unordered_map<long, char>(10000000);
 
     // initialize all of the lookup tables
@@ -580,7 +581,7 @@ void CppGenerateWidths(const char *prefix, long label, double resolution[3])
 
     // populate the point clouds with segment voxels and anchor points
     CppPopulatePointCloud(prefix, "skeletons", label);
-    
+
     // can  use offsets since all paramters are offset by 1
     // needs to happen after PopulatePointCloud()
     PopulateOffsets();
