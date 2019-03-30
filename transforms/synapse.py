@@ -199,9 +199,6 @@ def JWRandZebrafinchSynapses(prefix, label):
                 iy = int(line[1]) / downsample_rate[OR_Y]
                 ix = int(line[2]) / downsample_rate[OR_Z]
 
-            # if already in segment there are no problems
-            iv = iz * yres * xres + iy * xres + ix
-                
             # create a 2D vector for this point
             vec = np.zeros((1, 3), dtype=np.int32)
             vec[0,:] = (ix, iy, iz)
