@@ -107,4 +107,5 @@ connectome/wiring.cpp
 verify/segment.cpp
 preprocess/components.cpp
 .vscode/*
-baselines/topological_thinning.cpp
+isthmus/topological_thinning.cpp
+teaser/teaser.cpp
