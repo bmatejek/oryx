@@ -21,7 +21,7 @@ static unsigned char *inside = NULL;
 
 static long inside_voxels = 0;
 static float scale = 1.3;
-static long buffer = 2;
+static long buffer = 10;
 
 
 
