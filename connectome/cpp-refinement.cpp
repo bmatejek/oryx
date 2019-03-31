@@ -24,7 +24,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     // populate the point clouds with segment voxels and anchor points
     CppPopulatePointCloud(prefix, "skeletons", label);
     CppPopulatePointCloud(prefix, "synapses", label);
-    CppPopulatePointCloud(prefix, "somae", label);
+    CppPopulatePointCloud(prefix, "volumetric_somae/segmentations", label);
     
     // get the number of elements in the skeleton
     long nelements = segment.size();
@@ -32,9 +32,12 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     DijkstraData *voxel_data = new DijkstraData[nelements];
     if (!voxel_data) exit(-1);
     
+    // initialize the priority queue
+    DijkstraData tmp;
+    MinBinaryHeap<DijkstraData *> voxel_heap(&tmp, (&tmp.distance), segment.size());
+
     // initialize all data
     long index = 0;
-    long source_index = -1;
     for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it, ++index) {
         voxel_data[index].iv = it->first;
         voxel_data[index].prev = NULL;
@@ -43,17 +46,16 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         dijkstra_map[it->first] = index;
 
         // this is the soma
-        if (it->second == 4) source_index = index;
+        if (it->second == 4) {
+            // insert the source into the heap
+            voxel_data[index].distance = 0.0;
+            voxel_data[index].visited = true;
+            voxel_heap.Insert(index, &(voxel_data[index]));
+        }
     }
-    printf("%ld\n", source_index);
-    // initialize the priority queue
-    DijkstraData tmp;
-    MinBinaryHeap<DijkstraData *> voxel_heap(&tmp, (&tmp.distance), segment.size());
-    
-    // insert the source into the heap
-    voxel_data[source_index].distance = 0.0;
-    voxel_data[source_index].visited = true;
-    voxel_heap.Insert(source_index, &(voxel_data[source_index]));
+
+
+
     
     // visit all vertices
     long voxel_index;

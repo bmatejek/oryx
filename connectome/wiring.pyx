@@ -54,8 +54,3 @@ def RefineSkeleton(prefix, label):
 
     # print out statistics 
     print 'Refined skeletons in {:0.2f} seconds'.format(time.time() - start_time)
-
-
-# function to actual extract the wiring diagram for this prefix
-def ExtractWiringDiagram(prefix):
-    pass
