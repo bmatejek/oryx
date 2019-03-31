@@ -24,7 +24,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     // populate the point clouds with segment voxels and anchor points
     CppPopulatePointCloud(prefix, "skeletons", label);
     CppPopulatePointCloud(prefix, "synapses", label);
-    CppPopulatePointCloud(prefix, "volumetric_somae/segmentations", label);
+    CppPopulatePointCloud(prefix, "volumetric_somae/surfaces", label);
     
     // get the number of elements in the skeleton
     long nelements = segment.size();
