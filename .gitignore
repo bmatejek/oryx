@@ -109,3 +109,4 @@ preprocess/components.cpp
 .vscode/*
 isthmus/topological_thinning.cpp
 teaser/teaser.cpp
+*~
