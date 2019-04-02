@@ -112,14 +112,14 @@ def SavePredictions(prefix, method, label):
 
 
 
-def SynapseEvaluate(prefix, method):
+def SynapseEvaluate(prefix, method, label):
     # go through every label for this method and dataset
-    directory = '{}/{}'.format(method, prefix)
-
-    labels = []
-    for filename in sorted(os.listdir(directory)):
-        if 'endpoints' in filename: continue
-        labels.append(int(filename[:-4]))
+    synapse_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
+    if not os.path.exists(synapse_filename): return
+    endpoint_filename = '{}/{}/{:06d}.pts'.format(method, prefix, label)
+    if not os.path.exists(endpoint_filename): return
+    nri_filename = 'nris/{}/{}-{:06d}.txt'.format(prefix, method.replace('/', '-'), label)
+    if os.path.exists(nri_filename): return
 
     # get the grid size
     zres, yres, xres = dataIO.GridSize(prefix)
@@ -127,90 +127,76 @@ def SynapseEvaluate(prefix, method):
 
     max_distance = 800
 
-    total_true_positives = 0
-    total_false_positives = 0
-    total_false_negatives = 0
+    # read the true synapse locations
+    synapses = dataIO.ReadPoints(prefix, label, 'synapses')
 
-    for label in labels:
-        # read the true synapse locations
-        synapses = dataIO.ReadPoints(prefix, label, 'synapses')
+    # read the predicted locations
+    predictions = ReadPredictions(prefix, method, label)
 
-        # read the predicted locations
-        predictions = ReadPredictions(prefix, method, label)
+    ngt_pts = len(synapses)
+    npr_pts = len(predictions)
 
-        ngt_pts = len(synapses)
-        npr_pts = len(predictions)
+    gt_pts = np.zeros((ngt_pts, 3), dtype=np.int64)
+    pr_pts = np.zeros((npr_pts, 3), dtype=np.int64)
+    npoints = ngt_pts * npr_pts
 
-        gt_pts = np.zeros((ngt_pts, 3), dtype=np.int64)
-        pr_pts = np.zeros((npr_pts, 3), dtype=np.int64)
-        npoints = ngt_pts * npr_pts
+    for pt in range(ngt_pts):
+        # get x, y, z locations
+        index = synapses[pt]
 
-        for pt in range(ngt_pts):
-            # get x, y, z locations
-            index = synapses[pt]
+        iz = index / (yres * xres)
+        iy = (index - iz * yres * xres) / xres
+        ix = index % xres 
 
-            iz = index / (yres * xres)
-            iy = (index - iz * yres * xres) / xres
-            ix = index % xres 
+        # coordinates are (x, y, z)
+        gt_pts[pt,0] = resolution[OR_X] * ix
+        gt_pts[pt,1] = resolution[OR_Y] * iy
+        gt_pts[pt,2] = resolution[OR_Z] * iz
+    
+    for pt in range(npr_pts):
+        # get x, y, z locations
+        index = predictions[pt]
 
-            # coordinates are (x, y, z)
-            gt_pts[pt,0] = resolution[OR_X] * ix
-            gt_pts[pt,1] = resolution[OR_Y] * iy
-            gt_pts[pt,2] = resolution[OR_Z] * iz
-        
-        for pt in range(npr_pts):
-            # get x, y, z locations
-            index = predictions[pt]
+        iz = index / (yres * xres)
+        iy = (index - iz * yres * xres) / xres
+        ix = index % xres
 
-            iz = index / (yres * xres)
-            iy = (index - iz * yres * xres) / xres
-            ix = index % xres
+        # coordinates are (x, y, z)
+        pr_pts[pt,0] = resolution[OR_X] * ix
+        pr_pts[pt,1] = resolution[OR_Y] * iy
+        pr_pts[pt,2] = resolution[OR_Z] * iz
 
-            # coordinates are (x, y, z)
-            pr_pts[pt,0] = resolution[OR_X] * ix
-            pr_pts[pt,1] = resolution[OR_Y] * iy
-            pr_pts[pt,2] = resolution[OR_Z] * iz
+    cost_matrix = scipy.spatial.distance.cdist(gt_pts, pr_pts)
+    matching = scipy.optimize.linear_sum_assignment(cost_matrix)
 
-        cost_matrix = scipy.spatial.distance.cdist(gt_pts, pr_pts)
-        matching = scipy.optimize.linear_sum_assignment(cost_matrix)
+    valid_matches = set()
+    for match in zip(matching[0], matching[1]):
+        # valid pairs must be within max_distance in nanometers
+        if cost_matrix[match[0], match[1]] > max_distance: continue
 
-        valid_matches = set()
-        for match in zip(matching[0], matching[1]):
-            # valid pairs must be within max_distance in nanometers
-            if cost_matrix[match[0], match[1]] > max_distance: continue
+        valid_matches.add(match)
 
-            valid_matches.add(match)
+    ncorrect_synapses = len(valid_matches)
+    nadded_synapses = npr_pts - len(valid_matches)
+    nmissed_synapses = ngt_pts = len(valid_matches)
 
-        ncorrect_synapses = len(valid_matches)
-        nadded_synapses = npr_pts - len(valid_matches)
-        nmissed_synapses = ngt_pts = len(valid_matches)
+    # the number of true positives is the number of paths between the valid locations
+    true_positives = ncorrect_synapses * (ncorrect_synapses - 1) / 2
+    # the number of false positives is every pair of paths between true and added synapses
+    false_positives = ncorrect_synapses * nadded_synapses
+    # the number of false negatives is every synapse pair that is divided
+    false_negatives = ncorrect_synapses * nmissed_synapses
 
-        # the number of true positives is the number of paths between the valid locations
-        true_positives = ncorrect_synapses * (ncorrect_synapses - 1) / 2
-        # the number of false positives is every pair of paths between true and added synapses
-        false_positives = ncorrect_synapses * nadded_synapses
-        # the number of false negatives is every synapse pair that is divided
-        false_negatives = ncorrect_synapses * nmissed_synapses
-
+    if true_positives == 0:
+        nri = 0
+    else:
         precision = true_positives / float(true_positives + false_positives)
         recall = true_positives / float(true_positives + false_negatives)
 
         nri = 2 * (precision * recall) / (precision + recall)
-        print '{} {} {}:'.format(prefix, method, label)
-        print '  {}'.format(nri)
-        print true_positives
-        print false_negatives
-        print false_positives
-
-        total_true_positives += true_positives
-        total_false_positives += false_positives
-        total_false_negatives += false_negatives
-
-    precision = total_true_positives / float(total_true_positives + total_false_positives)
-    recall = total_true_positives / float(total_true_positives + total_false_negatives)
-
-    nri = 2 * (precision * recall) / (precision + recall)
-    print '{} {}:'.format(prefix, method)
-    print '  {}'.format(nri)
+    
+    with open(nri_filename, 'w') as fd:
+        fd.write('{} {} {}\n'.format(true_positives, false_positives, false_negatives))
+        fd.write('{}\n'.format(nri))
 
     return nri
