@@ -108,5 +108,6 @@ verify/segment.cpp
 preprocess/components.cpp
 .vscode/*
 isthmus/topological_thinning.cpp
+isthmus_downsampled/topological_thinning_downsampled.cpp
 teaser/teaser.cpp
 *~
