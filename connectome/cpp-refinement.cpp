@@ -16,6 +16,9 @@ struct DijkstraData {
 
 void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
 {
+    // start timing statistics
+    clock_t start_time = clock();
+
     // clear the global variables
     segment = std::unordered_map<long, char>();
     synapses = std::unordered_set<long>();
@@ -193,4 +196,19 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     fclose(dfp);
 
     delete[] voxel_data;
+
+    double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
+
+    char time_filename[4096];
+    sprintf(time_filename, "timings/radii/%s-%06ld.time", prefix, label);
+
+    FILE *tfp = fopen(time_filename, "wb");
+    if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+
+    // write the number of points and the total time to file
+    if (fwrite(&nelements, sizeof(long), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+    if (fwrite(&total_time, sizeof(double), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+
+    // close file
+    fclose(tfp);
 }
