@@ -596,6 +596,7 @@ void CppTopologicalThinning(const char *prefix, const char *lookup_table_directo
         long iv = iz * grid_size[OR_X] * grid_size[OR_Y] + iy * grid_size[OR_X] + ix;
 
         // endpoints are written as negatives
+        // TODO FIX THIS BUG!!
         if (IsEndpoint(LE->iv)) iv = -1 * iv;
         if (fwrite(&iv, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
