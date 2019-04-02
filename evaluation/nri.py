@@ -135,6 +135,7 @@ def SynapseEvaluate(prefix, method, label):
 
     ngt_pts = len(synapses)
     npr_pts = len(predictions)
+    
 
     gt_pts = np.zeros((ngt_pts, 3), dtype=np.int64)
     pr_pts = np.zeros((npr_pts, 3), dtype=np.int64)

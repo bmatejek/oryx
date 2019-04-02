@@ -9,7 +9,7 @@ from oryx.utilities import dataIO
 
 
 def CreateVolumetricSomae(prefix, label, subset):
-    somae_filename = 'raw_data/somae/{}/cell{:03d}_d.h5'.format(prefix, label)
+    somae_filename = 'raw_data/somae/{}/cell{:03d}_filled.h5'.format(prefix, label)
 
     segment_filename = '{}/{}/{:06d}.pts'.format(subset, prefix, label)
     if not os.path.exists(segment_filename): return
