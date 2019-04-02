@@ -167,8 +167,21 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         long voxel_index = *it;
         if (fwrite(&voxel_index, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", wiring_filename); exit(-1); }
 
+        // get the upsampled location
+        long ix, iy, iz;
+        iz = voxel_index / (grid_size[OR_X] * grid_size[OR_Y]);
+        iy = (voxel_index - iz * grid_size[OR_X] * grid_size[OR_Y]) / grid_size[OR_X];
+        ix = voxel_index % grid_size[OR_X];
+
+        // need to repad everything
+        iz += 1;
+        iy += 1;
+        ix += 1;
+
+        long padded_index = iz * (grid_size[OR_X] + 2) * (grid_size[OR_Y] + 2) + iy * (grid_size[OR_X]) + ix;
+
         // get the corresponding neighbor data
-        long dijkstra_index = dijkstra_map[voxel_index];
+        long dijkstra_index = dijkstra_map[padded_index];
         DijkstraData *dijkstra_data = &(voxel_data[dijkstra_index]);
         double distance = dijkstra_data->distance;
 
