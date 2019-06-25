@@ -111,3 +111,4 @@ isthmus/topological_thinning.cpp
 isthmus_downsampled/topological_thinning_downsampled.cpp
 teaser/teaser.cpp
 *~
+.vscode
