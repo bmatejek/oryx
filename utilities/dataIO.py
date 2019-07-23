@@ -39,6 +39,14 @@ def ReadH5File(filename):
 
 
 
+def WriteH5File(data, filename, dataset):
+    with h5py.File(filename, 'w') as hf:
+        # should cover all cases of affinities/images
+        hf.create_dataset(dataset, data=data, compression='gzip')
+
+
+
+
 def ReadPoints(prefix, label, dataset):
     # get the filename for the segmentation
     point_cloud_filename = '{}/{}/{:06d}.pts'.format(dataset, prefix, label)
