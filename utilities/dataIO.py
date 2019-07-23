@@ -33,7 +33,8 @@ def ReadImage(filename):
 def ReadH5File(filename):
     # return the first h5 dataset from this file
     with h5py.File(filename, 'r') as hf:
-        data = np.array(hf[hf.keys()[0]])
+        keys = [key for key in hf.keys()]
+        data = np.array(hf[keys[0]])
 
     return data
 
