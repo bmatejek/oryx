@@ -63,7 +63,7 @@ def H5Section2PointCloud(prefix, filename, section_index, section_width):
         # write the point cloud to file
         if not os.path.isdir('original_data/segmentations/{}/sections'.format(prefix)): os.mkdir('original_data/segmentations/{}/sections'.format(prefix))
         output_filename = 'original_data/segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section_index, label)
-        with open(output_filename, 'w') as fd:
+        with open(output_filename, 'wb') as fd:
             npoints = len(point_cloud)
             fd.write(struct.pack('qqqq', zres, yres, xres, npoints))
             fd.write(struct.pack('%sq' % npoints, *point_cloud))
