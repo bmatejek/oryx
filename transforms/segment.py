@@ -61,6 +61,7 @@ def H5Section2PointCloud(prefix, filename, section_index, section_width):
         if not len(point_cloud): continue
 
         # write the point cloud to file
+        if not os.path.isdir('original_data/segmentations/{}/sections'.format(prefix)): os.mkdir('original_data/segmentations/{}/sections'.format(prefix))
         output_filename = 'original_data/segmentations/{}/sections/section-{:03d}-label-{:06d}.pts'.format(prefix, section_index, label)
         with open(output_filename, 'w') as fd:
             npoints = len(point_cloud)
