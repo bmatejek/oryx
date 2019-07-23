@@ -121,7 +121,6 @@ void CppFindBackgroundNeighbors(int *segmentation, long grid_size[3], int max_la
         neighbors[iv] = std::unordered_set<int>();
 
     for (long ii = 0; ii < nentries; ++ii) {
-        if ((ii % (grid_size[OR_Y] * grid_size[OR_X])) == 0) printf("%d\n", ii / (grid_size[OR_Y] * grid_size[OR_X]));
         int label = segmentation[ii];
         
         // skip over non-background elements
