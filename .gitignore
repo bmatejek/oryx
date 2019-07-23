@@ -112,3 +112,4 @@ isthmus_downsampled/topological_thinning_downsampled.cpp
 teaser/teaser.cpp
 *~
 .vscode
+transforms/seg2seg.cpp

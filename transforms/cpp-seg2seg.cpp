@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <queue>
 #include <unordered_set>
-#include <map>
 #include <ctime>
 
 
@@ -98,4 +96,72 @@ void CppConnectBackground(int *segmentation, long grid_size[3], int max_label)
     }
 
     delete[] components;
+}
+
+
+
+
+void CppFindBackgroundNeighbors(int *segmentation, long grid_size[3], int max_label) 
+{
+    // create the new components array
+    nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
+    sheet_size = grid_size[OR_Y] * grid_size[OR_X];
+    row_size = grid_size[OR_X];
+
+    // get the max segment including background
+    int max_segment = 0;
+    for (long iv = 0; iv < nentries; ++iv) {
+        if (segmentation[iv] > max_segment) max_segment = segmentation[iv];
+    }
+    max_segment++;
+
+    // create set of neighbors
+    std::unordered_set<int> *neighbors = new std::unordered_set<int>[max_segment];
+    for (int iv = 0; iv  < max_segment; ++iv)
+        neighbors[iv] = std::unordered_set<int>();
+
+    for (long ii = 0; ii < nentries; ++ii) {
+        if ((ii % (grid_size[OR_Y] * grid_size[OR_X])) == 0) printf("%d\n", ii / (grid_size[OR_Y] * grid_size[OR_X]));
+        int label = segmentation[ii];
+        
+        // skip over non-background elements
+        if (label <= max_label) continue;
+
+        // go through all neighbors of this background segment
+        long iz, iy, ix;
+        IndexToIndicies(ii, ix, iy, iz);
+
+        for (long iw = iz - 1; iw <= iz + 1; ++iw) {
+            if (iw < 0 or iw >= grid_size[OR_Z]) continue;
+            for (long iv = iy - 1; iv <= iy + 1; ++iv) {
+                if (iv < 0 or iv >= grid_size[OR_Y]) continue;
+                for (long iu = ix - 1; iu <= ix + 1; ++iu) {
+                    if (iu < 0 or iu >= grid_size[OR_X]) continue;
+                    int neighbor = segmentation[IndicesToIndex(iu, iv, iw)];
+
+                    // skip if same background label
+                    if (neighbor == label) continue;
+
+                    // make sure that the neighbor is not background
+                    if (neighbor > max_label) {
+                        fprintf(stderr, "Error, neighbor is not true label\n"); 
+                        exit(-1);
+                    }
+
+                    neighbors[label].insert(neighbor);
+                }        
+            }
+        }
+    }
+
+    for (long iv = 0; iv < nentries; ++iv) {
+        long segment = segmentation[iv];
+        if (segment <= max_label) continue;
+        else if (neighbors[segment].size() == 1) {
+            segmentation[iv] = *(neighbors[segment].begin());
+        }
+        else segmentation[iv] = 0;
+    }
+
+    delete[] neighbors;
 }
