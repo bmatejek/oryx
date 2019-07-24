@@ -17,4 +17,4 @@ def Preprocess(prefix, label):
     if not os.path.exists('somae/{}/{:06d}.pts'.format(prefix, label)): return
 
     # call the c++ function
-    CppForceConnectivity(prefix, label)
+    CppForceConnectivity(prefix.encode('utf-8'), label)
