@@ -78,23 +78,23 @@ def ReadAllPoints(prefix, dataset):
 
 
 
-def ReadRadii(prefix, label):
+def ReadWidths(prefix, label):
     # get the filename with all of the widths
-    radius_filename = 'radii/{}/{:06d}.pts'.format(prefix, label)
+    width_filename = 'widths/{}/{:06d}.pts'.format(prefix, label)
 
     prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
 
-    radii = {}
+    widths = {}
 
-    with open(radius_filename, 'rb') as fd:
+    with open(width_filename, 'rb') as fd:
         zres, yres, xres, nelements, = struct.unpack('qqqq', fd.read(32))
         assert (zres == prefix_zres)
         assert (yres == prefix_yres)
         assert (xres == prefix_xres)
 
         for _ in range(nelements):
-            index, radius, = struct.unpack('qd', fd.read(16))
-            radii[index] = radius
+            index, width, = struct.unpack('qf', fd.read(12))
+            widths[index] = width
 
-    # return the dictionary of radii for each skeleton point
-    return radii
+    # return the dictionary of widths for each skeleton point
+    return widths

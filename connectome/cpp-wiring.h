@@ -10,8 +10,8 @@
 
 // function calls across cpp files
 
+void CppUpdateResolution(float resolution[3]);
 void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory);
-void CppGenerateWidths(const char *prefix, long label, double resolution[3]);
 void CppSkeletonRefinement(const char *prefix, long label, double resolution[3]);
 void CppPopulatePointCloud(const char *prefix, const char *dataset, long label);
 

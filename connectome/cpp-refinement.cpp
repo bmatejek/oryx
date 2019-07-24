@@ -200,7 +200,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
     double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
 
     char time_filename[4096];
-    sprintf(time_filename, "timings/radii/%s-%06ld.time", prefix, label);
+    sprintf(time_filename, "running_times/radii/%s-%06ld.time", prefix, label);
 
     FILE *tfp = fopen(time_filename, "wb");
     if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }

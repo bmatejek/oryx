@@ -1,5 +1,6 @@
 /* c++ file to extract wiring diagram */
 
+#include <limits>
 #include "cpp-wiring.h"
 
 
@@ -7,6 +8,8 @@
 // constant variables
 
 static const int lookup_table_size = 1 << 23;
+static float resolution[3] = { -1, -1, -1 };
+
 
 // DO NOT CHANGE THIS ORDERING
 static const int NTHINNING_DIRECTIONS = 6;
@@ -22,7 +25,7 @@ static const int WEST = 5;
 // lookup tables
 
 static unsigned char *lut_simple;
-static std::unordered_map<long, char> erosions;
+static std::unordered_map<long, float> widths;
 
 
 
@@ -32,7 +35,7 @@ static long long_mask[26];
 static unsigned char char_mask[8];
 static long n26_offsets[26];
 static long n6_offsets[6];
-static long reverse_direction[6];
+
 
 static void set_long_mask(void)
 {
@@ -118,16 +121,6 @@ static void PopulateOffsets(void)
     n6_offsets[3] = grid_size[OR_Y] * grid_size[OR_X];
     n6_offsets[4] = +1;
     n6_offsets[5] = -1;
-
-    // reverse direction points in the opposite direction
-    // so erosions points back to the previous node
-    // DO NOT CHANGE THIS ORDERING
-    reverse_direction[0] = 1;
-    reverse_direction[1] = 0;
-    reverse_direction[2] = 3;
-    reverse_direction[3] = 2;
-    reverse_direction[4] = 5;
-    reverse_direction[5] = 4;
 }
 
 
@@ -304,6 +297,9 @@ static void CollectSurfaceVoxels(void)
         // all of these elements are either 1 or 3 and in the segment
         long index = it->first;
 
+        // initialize widths to maximum float value
+        widths[index] = std::numeric_limits<float>::max();
+
         long ix, iy, iz;
         IndexToIndices(index, ix, iy, iz);
         // check the 6 neighbors
@@ -321,12 +317,14 @@ static void CollectSurfaceVoxels(void)
             if (segment.find(neighbor_index) == segment.end()) {
                 // this location is a boundary so create a surface voxel and break
                 // cannot update it->second if it is synapse so need this test!!
-                if (it->second == 1) it->second = 2;
+                if (it->second == 1) {
+                    it->second = 2;
+                    NewSurfaceVoxel(index, ix, iy, iz);
+                }
 
-                NewSurfaceVoxel(index, ix, iy, iz);
+                // note this location as surface
+                widths[index] = 0;
 
-                // note this location as surface in erosions list
-                erosions[index] = -1;
                 break;
             }
         }
@@ -428,17 +426,40 @@ static long ThinningIterationStep(void)
                     long neighbor_index = index + n6_offsets[ip];
 
                     // previously not on the surface but is in the object
-                    if (segment[neighbor_index] && erosions.find(neighbor_index) == erosions.end()) {
-
+                    // widths of voxels start at maximum and first updated when put on surface
+                    if (segment[neighbor_index] == 1) {
                         long iu, iv, iw;
                         IndexToIndices(neighbor_index, iu, iv, iw);
                         NewSurfaceVoxel(neighbor_index, iu, iv, iw);
-                        // do not convert isthmuses to surface points
-                        if (segment[neighbor_index] == 1) segment[neighbor_index] = 2;
-                        // use ip here so it points to voxel before it 
-                        // need to reverse the direction so that we are point back at the previous voxel
-                        // DO NOT CHANGE
-                        erosions[neighbor_index] = reverse_direction[ip];
+                        
+                        // convert to a surface point
+                        segment[neighbor_index] = 2;
+                    }
+                }
+
+                // check all 26 neighbors to see if width is better going through this voxel
+                for (long ip = 0; ip < 26; ++ip) {
+                    long neighbor_index = index + n26_offsets[ip];
+                    if (!segment[neighbor_index]) continue;
+
+                    // get this index in (x, y, z)
+                    long iu, iv, iw;
+                    IndexToIndices(neighbor_index, iu, iv, iw);
+
+                    // get the distance from the voxel to be deleted
+                    float diffx = resolution[OR_X] * (ix - iu);
+                    float diffy = resolution[OR_Y] * (iy - iv);
+                    float diffz = resolution[OR_Z] * (iz - iw);
+
+                    float distance = sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
+                    float current_width = widths[neighbor_index];
+
+                    if (neighbor_index == (1671L * 3586L * 2946L + 1306L * 3586L + 3058L)) {
+                        printf("%f %f %f\n", widths[index], distance, widths[neighbor_index]);
+                    }
+
+                    if (widths[index] + distance < current_width) {
+                        widths[neighbor_index] = widths[index] + distance;
                     }
                 }
 
@@ -472,6 +493,14 @@ static void SequentialThinning(const char *prefix, long label)
 
 
 
+void CppUpdateResolution(float input_resolution[3])
+{
+    resolution[OR_Z] = input_resolution[OR_Z];
+    resolution[OR_Y] = input_resolution[OR_Y];
+    resolution[OR_X] = input_resolution[OR_X];
+}
+
+
 
 void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_table_directory)
 {
@@ -482,7 +511,7 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
     segment = std::unordered_map<long, char>(10000000);
     // not needed here but for refinement so need to initialize anyway
     synapses = std::unordered_set<long>(); 
-    erosions = std::unordered_map<long, char>(10000000);
+    widths = std::unordered_map<long, float>(10000000);
 
     // initialize all of the lookup tables
     InitializeLookupTables(lookup_table_directory);
@@ -529,11 +558,27 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
     if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
     if (fwrite(&num, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
 
+    // write the widths to file   
+    char widths_filename[4096];
+    sprintf(widths_filename, "widths/%s/%06ld.pts", prefix, label);
+
+    FILE *width_fp = fopen(widths_filename, "wb");
+    if (!width_fp) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+    
+    // write the number of elements
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, width_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, width_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, width_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+    if (fwrite(&num, sizeof(long), 1, width_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+
     printf("  Remaining voxels: %ld\n", num);
 
     while (surface_voxels.first != NULL) {
         // get the surface voxels
         ListElement *LE = (ListElement *) surface_voxels.first;
+
+        long index = LE->iv;
+        float width = widths[index];
 
         // get the coordinates for this skeleton point in the non-cropped segmentation
         long iz = LE->iz - 1;
@@ -541,7 +586,9 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
         long ix = LE->ix - 1;
         long iv = iz * grid_size[OR_X] * grid_size[OR_Y] + iy * grid_size[OR_X] + ix;
 
-        if (fwrite(&iv, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
+        if (fwrite(&iv, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+        if (fwrite(&iv, sizeof(long), 1, width_fp) != 1) { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
+        if (fwrite(&width, sizeof(float), 1, width_fp) != 1)  { fprintf(stderr, "Failed to write to %s\n", widths_filename); exit(-1); }
 
         // remove this voxel
         RemoveSurfaceVoxel(LE);
@@ -549,114 +596,20 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
 
     // close the I/O files
     fclose(wfp);
-       
+    fclose(width_fp);
+
     delete[] lut_simple;
 
     double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
 
     char time_filename[4096];
-    sprintf(time_filename, "timings/skeletons/%s-%06ld.time", prefix, label);
+    sprintf(time_filename, "running_times/skeletons/%s-%06ld.time", prefix, label);
 
     FILE *tfp = fopen(time_filename, "wb");
     if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
 
     // write the number of points and the total time to file
     if (fwrite(&initial_points, sizeof(long), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
-    if (fwrite(&total_time, sizeof(double), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
-
-    // close file
-    fclose(tfp);
-}
-
-
-
-void CppGenerateWidths(const char *prefix, long label, double resolution[3])
-{
-    // start timing statistics
-    clock_t start_time = clock();
-
-    // create (and clear) the global variable segment to read in thinning only
-    segment = std::unordered_map<long, char>();
-
-    // populate the point clouds with segment voxels and anchor points
-    CppPopulatePointCloud(prefix, "skeletons", label);
-
-    // can  use offsets since all paramters are offset by 1
-    // needs to happen after PopulatePointCloud()
-    PopulateOffsets();
-
-    // create an output file for the points
-    char output_filename[4096];
-    sprintf(output_filename, "radii/%s/%06ld.pts", prefix, label);
-
-    FILE *wfp = fopen(output_filename, "wb");
-    if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-
-    // unpad the grid size
-    grid_size[OR_Z] -= 2;
-    grid_size[OR_Y] -= 2;
-    grid_size[OR_X] -= 2;
-
-    // write the number of elements
-    long nelements = segment.size();
-    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    if (fwrite(&nelements, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-
-    // repad the grid size for iterations
-    grid_size[OR_Z] += 2;
-    grid_size[OR_Y] += 2;
-    grid_size[OR_X] += 2;
-
-    // iterate throught the skeleton endpoints and trace back to the surface
-    for (std::unordered_map<long, char>::iterator it = segment.begin(); it != segment.end(); ++it) {
-        long current_index = it->first;
-        
-        // convert to cartesian coordinates
-        long ix, iy, iz;
-        IndexToIndices(current_index, ix, iy, iz);
-
-        while (erosions[current_index] != -1) {
-            // get the direction to the next node
-            long direction = erosions[current_index];
-
-            // update the current index
-            current_index = current_index + n6_offsets[direction];
-        }
-
-        // convert to cartesian coordinates
-        long iu, iv, iw;
-        IndexToIndices(current_index, iu, iv, iw);
-
-        double xdiff = resolution[OR_X] * (ix - iu);
-        double ydiff = resolution[OR_Y] * (iy - iv);
-        double zdiff = resolution[OR_Z] * (iz - iw);
-
-        double distance = sqrt(xdiff * xdiff + ydiff * ydiff + zdiff * zdiff);
-
-        // unpad the cartesian coordinates
-        ix--; iy--; iz--;
-        // find the corrected linear index
-        long index = iz * (grid_size[OR_X] - 2) * (grid_size[OR_Y] - 2) + iy * (grid_size[OR_X] - 2) + ix;
-
-        if (fwrite(&index, sizeof(long), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-        if (fwrite(&distance, sizeof(double), 1, wfp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
-    }
-
-    // close the file
-    fclose(wfp);
-
-    double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
-
-    char time_filename[4096];
-    sprintf(time_filename, "timings/radii/%s-%06ld.time", prefix, label);
-
-    FILE *tfp = fopen(time_filename, "wb");
-    if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
-
-    // write the number of points and the total time to file
-    if (fwrite(&nelements, sizeof(long), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
     if (fwrite(&total_time, sizeof(double), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
 
     // close file

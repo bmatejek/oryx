@@ -696,7 +696,7 @@ void CppTeaserSkeletonization(const char *prefix, long label, float resolution[3
     double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
 
     char time_filename[4096];
-    sprintf(time_filename, "timings/teasers/%s-%06ld.time", prefix, label);
+    sprintf(time_filename, "running_times/teasers/%s-%06ld.time", prefix, label);
 
     FILE *tfp = fopen(time_filename, "wb");
     if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
