@@ -9,7 +9,7 @@ from oryx.utilities import dataIO
 
 
 def CreateVolumetricSomae(prefix, label, subset):
-    somae_filename = 'raw_data/somae/{}/cell{:03d}_filled.h5'.format(prefix, label)
+    somae_filename = 'raw_data/somae/{}/cell{:03d}_d.h5'.format(prefix, label)
 
     segment_filename = '{}/{}/{:06d}.pts'.format(subset, prefix, label)
     if not os.path.exists(segment_filename): return
@@ -32,13 +32,13 @@ def CreateVolumetricSomae(prefix, label, subset):
     low_zres, low_yres, low_xres = somae.shape
 
     for index in point_cloud:
-        iz = index / (yres * xres)
-        iy = (index - iz * yres * xres) / xres
+        iz = index // (yres * xres)
+        iy = (index - iz * yres * xres) // xres
         ix = index % xres
 
-        zdown = iz / downz
-        ydown = iy / downy
-        xdown = ix / downx
+        zdown = iz // downz
+        ydown = iy // downy
+        xdown = ix // downx
 
         # bounds checking
         if low_zres - 1 < zdown:

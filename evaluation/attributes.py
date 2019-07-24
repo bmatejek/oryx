@@ -27,8 +27,8 @@ def EvaluateRadii(prefix, label):
 
     np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
     for index, iv in enumerate(surface_point_cloud):
-        iz = iv / (yres * xres)
-        iy = (iv - iz * yres * xres) / xres
+        iz = iv // (yres * xres)
+        iy = (iv - iz * yres * xres) // xres
         ix = iv % xres
 
         np_point_cloud[index,:] = (ix, iy, iz)
@@ -43,8 +43,8 @@ def EvaluateRadii(prefix, label):
     count = 0
     nradii = len(radii)
     for iv, index in enumerate(radii):
-        iz = index / (yres * xres)
-        iy = (index - iz * yres * xres) / xres
+        iz = index // (yres * xres)
+        iy = (index - iz * yres * xres) // xres
         ix = index % xres
 
         # create a 2D vector for this point
@@ -56,8 +56,8 @@ def EvaluateRadii(prefix, label):
 
         closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
         
-        point_iz = closest_point / (yres * xres)
-        point_iy = (closest_point - point_iz * yres * xres) / xres
+        point_iz = closest_point // (yres * xres)
+        point_iy = (closest_point - point_iz * yres * xres) // xres
         point_ix = closest_point % xres
 
         # find the nearest point on the surface

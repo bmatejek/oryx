@@ -31,8 +31,8 @@ def CreateEndpoints(points, zres, yres, xres):
     endpoints = []
 
     for point in points:
-        iz = point / (yres * xres)
-        iy = (point - iz * yres * xres) / xres
+        iz = point // (yres * xres)
+        iy = (point - iz * yres * xres) // xres
         ix = point % xres
 
         # check all 26 neighbors
@@ -145,8 +145,8 @@ def SynapseEvaluate(prefix, method, label):
         # get x, y, z locations
         index = synapses[pt]
 
-        iz = index / (yres * xres)
-        iy = (index - iz * yres * xres) / xres
+        iz = index // (yres * xres)
+        iy = (index - iz * yres * xres) // xres
         ix = index % xres 
 
         # coordinates are (x, y, z)
@@ -158,8 +158,8 @@ def SynapseEvaluate(prefix, method, label):
         # get x, y, z locations
         index = predictions[pt]
 
-        iz = index / (yres * xres)
-        iy = (index - iz * yres * xres) / xres
+        iz = index // (yres * xres)
+        iy = (index - iz * yres * xres) // xres
         ix = index % xres
 
         # coordinates are (x, y, z)

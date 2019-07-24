@@ -94,8 +94,8 @@ def Fib25Synapses(start_index):
             
         np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
         for index, iv in enumerate(surface_point_cloud):
-            iz = iv / (yres * xres)
-            iy = (iv - iz * yres * xres) / xres
+            iz = iv // (yres * xres)
+            iy = (iv - iz * yres * xres) // xres
             ix = iv % xres
 
             np_point_cloud[index,:] = (ix, iy, iz)
@@ -106,8 +106,8 @@ def Fib25Synapses(start_index):
         mse = 0.0
 
         for synapse in synapses_per_segment[segment]:
-            iz = synapse / (yres * xres)
-            iy = (synapse - iz * yres * xres) / xres
+            iz = synapse // (yres * xres)
+            iy = (synapse - iz * yres * xres) // xres
             ix = synapse % xres
             
             # create a 2D vector for this point
@@ -116,8 +116,8 @@ def Fib25Synapses(start_index):
 
             closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
             
-            point_iz = closest_point / (yres * xres)
-            point_iy = (closest_point - point_iz * yres * xres) / xres
+            point_iz = closest_point // (yres * xres)
+            point_iy = (closest_point - point_iz * yres * xres) // xres
             point_ix = closest_point % xres
             
             distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
@@ -134,7 +134,7 @@ def Fib25Synapses(start_index):
             fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
             fd.write(struct.pack('%sq' % nsynapses, *synapses))
         
-        print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), segment, time.time() - start_time)
+        print ('Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), segment, time.time() - start_time))
 
         
 
@@ -175,8 +175,8 @@ def JWRandZebrafinchSynapses(prefix, label):
 
     np_point_cloud = np.zeros((npoints, 3), dtype=np.int32)
     for index, iv in enumerate(surface_point_cloud):
-        iz = iv / (yres * xres)
-        iy = (iv - iz * yres * xres) / xres
+        iz = iv // (yres * xres)
+        iy = (iv - iz * yres * xres) // xres
         ix = iv % xres
 
         np_point_cloud[index,:] = (ix, iy, iz)
@@ -191,13 +191,13 @@ def JWRandZebrafinchSynapses(prefix, label):
             line = line.strip().split()
             
             if xyz_coordinates:
-                ix = int(line[0]) / downsample_rate[OR_X]
-                iy = int(line[1]) / downsample_rate[OR_Y]
-                iz = int(line[2]) / downsample_rate[OR_Z]
+                ix = int(line[0]) // downsample_rate[OR_X]
+                iy = int(line[1]) // downsample_rate[OR_Y]
+                iz = int(line[2]) // downsample_rate[OR_Z]
             else:
-                iz = int(line[0]) / downsample_rate[OR_X]
-                iy = int(line[1]) / downsample_rate[OR_Y]
-                ix = int(line[2]) / downsample_rate[OR_Z]
+                iz = int(line[0]) // downsample_rate[OR_X]
+                iy = int(line[1]) // downsample_rate[OR_Y]
+                ix = int(line[2]) // downsample_rate[OR_Z]
 
             # create a 2D vector for this point
             vec = np.zeros((1, 3), dtype=np.int32)
@@ -205,8 +205,8 @@ def JWRandZebrafinchSynapses(prefix, label):
 
             closest_point = surface_point_cloud[scipy.spatial.distance.cdist(np_point_cloud, vec).argmin()]
             
-            point_iz = closest_point / (yres * xres)
-            point_iy = (closest_point - point_iz * yres * xres) / xres
+            point_iz = closest_point // (yres * xres)
+            point_iy = (closest_point - point_iz * yres * xres) // xres
             point_ix = closest_point % xres
                 
             distance = math.sqrt((ix - point_ix) * (ix - point_ix) + (iy - point_iy) * (iy - point_iy) + (iz - point_iz) * (iz - point_iz))
@@ -222,7 +222,7 @@ def JWRandZebrafinchSynapses(prefix, label):
         fd.write(struct.pack('qqqq', zres, yres, xres, nsynapses))
         fd.write(struct.pack('%sq' % nsynapses, *synapses))
                 
-    print 'Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), label, time.time() - start_time)
+    print ('Mean Squared Error {:0.2f} for label {} in {:0.2f} seconds'.format(mse / len(synapses), label, time.time() - start_time))
 
 
 
@@ -239,8 +239,8 @@ def FindSynapseSegmentPairs(segmentations, data):
     for segment in segmentations:
         # go through each point in each segment
         for iv in segmentations[segment]:
-            iz = iv / (yres * xres)
-            iy = (iv - iz * yres * xres) / xres
+            iz = iv // (yres * xres)
+            iy = (iv - iz * yres * xres) // xres
             ix = iv % xres
             
             # not a synapse location
