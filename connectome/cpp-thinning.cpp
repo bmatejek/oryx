@@ -454,10 +454,6 @@ static long ThinningIterationStep(void)
                     float distance = sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
                     float current_width = widths[neighbor_index];
 
-                    if (neighbor_index == (1671L * 3586L * 2946L + 1306L * 3586L + 3058L)) {
-                        printf("%f %f %f\n", widths[index], distance, widths[neighbor_index]);
-                    }
-
                     if (widths[index] + distance < current_width) {
                         widths[neighbor_index] = widths[index] + distance;
                     }
