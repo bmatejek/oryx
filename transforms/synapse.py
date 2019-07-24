@@ -288,7 +288,9 @@ def SNEMISynapses(prefix):
 
     # read in the synapse h5 file
     with h5py.File('raw_data/synapses/{}/synapses.h5'.format(prefix), 'r') as hf:
-        data = np.array(hf[hf.keys()[0]])
+        # use np.array to decompress
+        keys = [key for key in hf.keys()]
+        data = np.array(hf[keys[0]])        
 
     # get the grid size for this data
     zres, yres, xres = data.shape

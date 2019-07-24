@@ -132,7 +132,8 @@ def JWRPointCloud(label):
     # open this binary file
     with h5py.File(filename, 'r') as hf:
         # use np.array to decompress
-        data = np.array(hf[hf.keys()[0]])
+        keys = [key for key in hf.keys()]
+        data = np.array(hf[keys[0]])
     
     # verify the resolutions match
     zres, yres, xres = dataIO.GridSize('JWR')
@@ -187,7 +188,8 @@ def SNEMIPointCloud(prefix):
     # open this h5 file
     with h5py.File(filename, 'r') as hf:
         # use np.array to decompress
-        data = np.array(hf[hf.keys()[0]])
+        keys = [key for key in hf.keys()]
+        data = np.array(hf[keys[0]])
 
     # verify the resolutions match
     zres, yres, xres = dataIO.GridSize(prefix)
