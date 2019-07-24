@@ -34,7 +34,7 @@ def GenerateSkeleton(prefix, label):
     lut_directory = os.path.dirname(__file__)
 
     # call the topological skeleton algorithm
-    CppSkeletonGeneration(prefix.encode('utf-8'), label, lut_directory)
+    CppSkeletonGeneration(prefix.encode('utf-8'), label, lut_directory.encode('utf-8'))
 
     # print out statistics for wiring extraction
     print ('Generated skeletons in {:0.2f} seconds'.format(time.time() - start_time))
