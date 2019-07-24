@@ -34,7 +34,7 @@ def GenerateSkeleton(prefix, label):
     lut_directory = os.path.dirname(__file__)
 
     # call the topological skeleton algorithm
-    CppSkeletonGeneration(prefix, label, lut_directory)
+    CppSkeletonGeneration(prefix.encode('utf-8'), label, lut_directory)
 
     # print out statistics for wiring extraction
     print ('Generated skeletons in {:0.2f} seconds'.format(time.time() - start_time))
@@ -50,7 +50,7 @@ def RefineSkeleton(prefix, label):
     cdef np.ndarray[double, ndim=1, mode='c'] cpp_resolution = np.ascontiguousarray(dataIO.Resolution(prefix))
 
     # call the post processing algorithm
-    CppSkeletonRefinement(prefix, label, &(cpp_resolution[0]))
+    CppSkeletonRefinement(prefix.encode('utf-8'), label, &(cpp_resolution[0]))
 
     # print out statistics 
     print ('Refined skeletons in {:0.2f} seconds'.format(time.time() - start_time))
