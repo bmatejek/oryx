@@ -40,7 +40,6 @@ def EvaluateWidths(prefix, label):
     
     # keep track of the error over time
     mean_absolute_error = 0.0
-    epsilon = 10e-6
 
     count = 0
     for iv, index in enumerate(skeletons):
