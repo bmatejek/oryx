@@ -182,7 +182,7 @@ def SynapseEvaluate(prefix, method, label):
     nmissed_synapses = ngt_pts = len(valid_matches)
 
     # the number of true positives is the number of paths between the valid locations
-    true_positives = ncorrect_synapses * (ncorrect_synapses - 1) / 2
+    true_positives = ncorrect_synapses * (ncorrect_synapses - 1) // 2
     # the number of false positives is every pair of paths between true and added synapses
     false_positives = ncorrect_synapses * nadded_synapses
     # the number of false negatives is every synapse pair that is divided
