@@ -43,7 +43,7 @@ def EvaluateWidths(prefix, label):
 
     count = 0
     for iv, index in enumerate(skeletons):
-        if random.random() < 0.95: continue
+        if random.random() < 0.80: continue
 
         # some of the soma locations will not be in the widths 
         if not index in widths: continue

@@ -68,7 +68,7 @@ def CorrectIsthmusEndpoints(prefix, method):
     
     for label in labels:
         filename = '{}/{}/{:06d}.pts'.format(method, prefix, label)
-        print filename
+        print (filename)
 
         zres, yres, xres = dataIO.GridSize(prefix)
 
