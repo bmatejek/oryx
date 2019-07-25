@@ -57,8 +57,6 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         }
     }
 
-
-
     
     // visit all vertices
     long voxel_index;
@@ -139,6 +137,8 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         }
     }
     
+    printf("%ld\n", wiring_diagram.size());
+
     char wiring_filename[4096];
     sprintf(wiring_filename, "connectomes/%s/%06ld.pts", prefix, label);
     char distance_filename[4096];
@@ -181,7 +181,7 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         iy += 1;
         ix += 1;
 
-        long padded_index = iz * (grid_size[OR_X] + 2) * (grid_size[OR_Y] + 2) + iy * (grid_size[OR_X]) + ix;
+        long padded_index = iz * (grid_size[OR_X] + 2) * (grid_size[OR_Y] + 2) + iy * (grid_size[OR_X] + 2) + ix;
 
         // get the corresponding neighbor data
         long dijkstra_index = dijkstra_map[padded_index];
