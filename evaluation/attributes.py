@@ -42,7 +42,6 @@ def EvaluateWidths(prefix, label):
     epsilon = 10e-6
 
     count = 0
-    import random
     for iv, index in enumerate(widths):
         if random.random() < 0.9: continue
 
@@ -68,4 +67,7 @@ def EvaluateWidths(prefix, label):
 
     print (time.time() - start_time)
 
+    output_filename = 'width-errors/{}-{:06d}.txt'.format(prefix, label)
+    with open(output_filename, 'w') as fd:
+        fd.write('{} {}\n'.format(mean_absolute_error, count))
 
