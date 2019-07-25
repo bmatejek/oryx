@@ -1,4 +1,4 @@
-import time
+B1;5202;0cimport time
 
 
 cimport cython
@@ -22,6 +22,6 @@ def TEASER(prefix, label):
 
     # call the teaser skeletonization algorithm
     cdef np.ndarray[float, ndim=1, mode='c'] cpp_resolution = np.ascontiguousarray(dataIO.Resolution(prefix)).astype(np.float32)
-    CppTeaserSkeletonization(prefix, label, &(cpp_resolution[0]))
+    CppTeaserSkeletonization(prefix.encode('utf-8'), label, &(cpp_resolution[0]))
 
-    print 'TEASER skeletonization time in {:0.2f} seconds'.format(time.time() - start_time)
+    print ('TEASER skeletonization time in {:0.2f} seconds'.format(time.time() - start_time))
