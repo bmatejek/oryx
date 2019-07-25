@@ -1,4 +1,4 @@
-B1;5202;0cimport time
+import time
 
 
 cimport cython
