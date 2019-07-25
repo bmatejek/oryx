@@ -36,15 +36,14 @@ def EvaluateWidths(prefix, label):
 
 
     widths = dataIO.ReadWidths(prefix, label)
+    skeletons = dataIO.ReadPoints(prefix, label, 'connectomes')
     
     # keep track of the error over time
     mean_absolute_error = 0.0
     epsilon = 10e-6
 
     count = 0
-    for iv, index in enumerate(widths):
-        if random.random() < 0.9: continue
-
+    for iv, index in enumerate(skeletons):
         iz = index // (yres * xres)
         iy = (index - iz * yres * xres) // xres
         ix = index % xres
