@@ -1,10 +1,10 @@
-#ifndef __CPP_TOPOLOGICAL_THINNING_DOWNSAMPLED__
-#define __CPP_TOPOLOGICAL_THINNING_DOWNSAMPLED__
+#ifndef __CPP_TOPOLOGICAL_THINNING__
+#define __CPP_TOPOLOGICAL_THINNING__
 
 #include <ctime>
 
 // function calls across cpp files
-void CppTopologicalThinningDownsampled(const char *prefix, const char *lookup_table_directory, long label, float resolution[3]);
+void CppTopologicalThinning(const char *prefix, const char *lookup_table_directory, long label, float resolution[3]);
 
 
 // universal variables and functions

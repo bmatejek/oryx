@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unordered_map>
 #include <unordered_set>
-#include "cpp-topological-thinning-downsampled.h"
+#include "cpp-topological-thinning.h"
 
 
 
@@ -559,7 +559,7 @@ static int maximum(long a, long b, long c) {
     return ((max < c) ? c : max);
 }
 
-void CppTopologicalThinningDownsampled(const char *prefix, const char *lookup_table_directory, long label, float resolution[3])
+void CppTopologicalThinning(const char *prefix, const char *lookup_table_directory, long label, float resolution[3])
 {
     // start timing statistics
     clock_t start_time = clock();
@@ -709,7 +709,7 @@ void CppTopologicalThinningDownsampled(const char *prefix, const char *lookup_ta
     }
 
     char output_filename[4096];
-    sprintf(output_filename, "baselines/topological-thinnings-downsampled/%s/%06d.pts", prefix, label);
+    sprintf(output_filename, "baselines/topological-thinnings/%s/%06ld.pts", prefix, label);
 
     FILE *wfp = fopen(output_filename, "wb");
     if (!wfp) { fprintf(stderr, "Failed to write to %s\n", output_filename); exit(-1); }
@@ -735,7 +735,7 @@ void CppTopologicalThinningDownsampled(const char *prefix, const char *lookup_ta
     double total_time = (double) (clock() - start_time) / CLOCKS_PER_SEC;
 
     char time_filename[4096];
-    sprintf(time_filename, "running_times/topological-thinnings-downsampled/%s-%06ld.time", prefix, label);
+    sprintf(time_filename, "running_times/topological-thinnings/%s-%06ld.time", prefix, label);
 
     FILE *tfp = fopen(time_filename, "wb");
     if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
