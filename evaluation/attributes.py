@@ -62,7 +62,6 @@ def EvaluateWidths(prefix, label):
         minimum_distance = scipy.spatial.distance.cdist(np_point_cloud, vec).min()
         
         error = abs(radius - minimum_distance)
-        print ('{} {}'.format(radius, minimum_distance))
 
         mean_absolute_error += error
         count += 1
