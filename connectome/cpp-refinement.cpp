@@ -137,8 +137,6 @@ void CppSkeletonRefinement(const char *prefix, long label, double resolution[3])
         }
     }
     
-    printf("%ld\n", wiring_diagram.size());
-
     char wiring_filename[4096];
     sprintf(wiring_filename, "connectomes/%s/%06ld.pts", prefix, label);
     char distance_filename[4096];
