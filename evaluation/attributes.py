@@ -43,6 +43,11 @@ def EvaluateWidths(prefix, label):
 
     count = 0
     for iv, index in enumerate(skeletons):
+        if random.random() < 0.95: continue
+
+        # some of the soma locations will not be in the widths 
+        if not index in widths: continue
+
         iz = index // (yres * xres)
         iy = (index - iz * yres * xres) // xres
         ix = index % xres
@@ -51,12 +56,13 @@ def EvaluateWidths(prefix, label):
         vec = np.zeros((1, 3), dtype=np.int32)
         vec[0,:] = (resolution[OR_X] * ix, resolution[OR_Y] * iy, resolution[OR_Z] * iz)
 
-        # get the radius at this index
+        # get the radius at this index 
         radius = widths[index]
 
         minimum_distance = scipy.spatial.distance.cdist(np_point_cloud, vec).min()
-
+        
         error = abs(radius - minimum_distance)
+        print ('{} {}'.format(radius, minimum_distance))
 
         mean_absolute_error += error
         count += 1
