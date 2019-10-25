@@ -601,12 +601,10 @@ void CppSkeletonGeneration(const char *prefix, long label, const char *lookup_ta
     char time_filename[4096];
     sprintf(time_filename, "running_times/skeletons/%s-%06ld.time", prefix, label);
 
-    FILE *tfp = fopen(time_filename, "wb");
+    FILE *tfp = fopen(time_filename, "w");
     if (!tfp) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
 
-    // write the number of points and the total time to file
-    if (fwrite(&initial_points, sizeof(long), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
-    if (fwrite(&total_time, sizeof(double), 1, tfp) != 1) { fprintf(stderr, "Failed to write to %s.\n", time_filename); exit(-1); }
+    fprintf(tfp, "%ld,%lf", initial_points, total_time);
 
     // close file
     fclose(tfp);

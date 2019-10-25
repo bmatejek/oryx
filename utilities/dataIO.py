@@ -98,3 +98,29 @@ def ReadWidths(prefix, label):
 
     # return the dictionary of widths for each skeleton point
     return widths
+
+
+
+def ReadDistances(prefix, label):
+    # get the filename with all of the widths                                                                                             
+    width_filename = 'distances/{}/{:06d}.pts'.format(prefix, label)
+
+    prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
+
+    widths = {}
+
+    with open(width_filename, 'rb') as fd:
+        zres, yres, xres, nelements, = struct.unpack('qqqq', fd.read(32))
+        assert (zres == prefix_zres)
+        assert (yres == prefix_yres)
+        assert (xres == prefix_xres)
+
+        for _ in range(nelements):
+            index, width, = struct.unpack('qd', fd.read(16))
+            widths[index] = width
+
+    # return the dictionary of widths for each skeleton point                                                                             
+    return widths
+
+
+
