@@ -74,9 +74,6 @@ void CppPopulatePointCloud(const char *prefix, const char *dataset, long label) 
             segment[iv] = 3;
             synapses.insert(iv);
         }
-        else if (!strcmp(dataset, "somae")) {
-            segment[iv] = 4;
-        }
         else if (!strcmp(dataset, "volumetric_somae/surfaces")) {
             segment[iv] = 4;
         }

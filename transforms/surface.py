@@ -1,3 +1,4 @@
+import os
 import glob
 import struct 
 
@@ -48,6 +49,8 @@ def FindSurface(point_cloud, zres, yres, xres):
 
 
 def Segment2Surface(prefix, label):
+    if not os.path.exists('segmentations/{}/{:06d}.pts'.format(prefix, label)): return
+
     # get the grid size for this prefix
     zres, yres, xres = dataIO.GridSize(prefix)
 

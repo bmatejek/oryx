@@ -165,9 +165,7 @@ def JWRandZebrafinchSynapses(prefix, label):
     else: 
         filename = 'raw_data/synapses/Zebrafinch/syn_{:04d}.txt'.format(label)
 
-    # save the synapses in the correct form
-    output_filename = 'synapses/{}/{:06d}.pts'.format(prefix, label)
-    if os.path.exists(output_filename): return
+    if not os.path.exists(filename): return
 
     # read the segmentation points for this label and convert to numpy array
     surface_point_cloud = dataIO.ReadPoints(prefix, label, 'surfaces')
