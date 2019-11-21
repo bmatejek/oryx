@@ -20,9 +20,11 @@ cdef extern from 'cpp-wiring.h':
 
 
 
-
 # extract the wiring diagram for this prefix and label
 def GenerateSkeleton(prefix, label):
+    if not os.path.exists('segmentations/{}/{:06d}.pts'.format(prefix, label)): return
+    if not os.path.exists('synapses/{}/{:06d}.pts'.format(prefix, label)): return
+
     # start running time statistics
     start_time = time.time()
 
@@ -43,6 +45,10 @@ def GenerateSkeleton(prefix, label):
 
 # post process the volume to correct segment errors
 def RefineSkeleton(prefix, label):
+    if not os.path.exists('skeletons/{}/{:06d}.pts'.format(prefix, label)): return
+    if not os.path.exists('synapses/{}/{:06d}.pts'.format(prefix, label)): return
+    if not os.path.exists('volumetric_somae/surfaces/{}/{:06d}.pts'.format(prefix, label)): return
+
     # start running time statistics
     start_time = time.time()
 
