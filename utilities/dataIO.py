@@ -67,7 +67,7 @@ def ReadPoints(prefix, label, dataset):
 
 def ReadAllPoints(prefix, dataset):
     labels = [int(label[:-4]) for label in sorted(os.listdir('{}/{}'.format(dataset, prefix)))]
-    
+
     point_clouds = {}
 
     # read all individual point clouds
@@ -102,7 +102,7 @@ def ReadWidths(prefix, label):
 
 
 def ReadDistances(prefix, label):
-    # get the filename with all of the widths                                                                                             
+    # get the filename with all of the widths
     width_filename = 'distances/{}/{:06d}.pts'.format(prefix, label)
 
     prefix_zres, prefix_yres, prefix_xres = GridSize(prefix)
@@ -119,8 +119,5 @@ def ReadDistances(prefix, label):
             index, width, = struct.unpack('qd', fd.read(16))
             widths[index] = width
 
-    # return the dictionary of widths for each skeleton point                                                                             
+    # return the dictionary of widths for each skeleton point
     return widths
-
-
-
