@@ -99,7 +99,6 @@ def Fib25Synapses(start_index):
             ix = iv % xres
 
             np_point_cloud[index,:] = (ix, iy, iz)
-            index += 1
 
         synapses = []
 
@@ -178,7 +177,6 @@ def JWRandZebrafinchSynapses(prefix, label):
         ix = iv % xres
 
         np_point_cloud[index,:] = (ix, iy, iz)
-        index += 1
 
     synapses = []
 
@@ -193,9 +191,9 @@ def JWRandZebrafinchSynapses(prefix, label):
                 iy = int(line[1]) // downsample_rate[OR_Y]
                 iz = int(line[2]) // downsample_rate[OR_Z]
             else:
-                iz = int(line[0]) // downsample_rate[OR_X]
+                iz = int(line[0]) // downsample_rate[OR_Z]
                 iy = int(line[1]) // downsample_rate[OR_Y]
-                ix = int(line[2]) // downsample_rate[OR_Z]
+                ix = int(line[2]) // downsample_rate[OR_X]
 
             # create a 2D vector for this point
             vec = np.zeros((1, 3), dtype=np.int32)
