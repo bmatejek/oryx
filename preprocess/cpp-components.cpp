@@ -184,7 +184,7 @@ void CppForceConnectivity(char *prefix, long label)
     if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
     if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
     if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
-    if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    if (fwrite(&largest_component_size, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
 
     for (std::unordered_map<long, long>::iterator it = components.begin(); it != components.end(); ++it) {
         if (it->second != largest_component) continue;
