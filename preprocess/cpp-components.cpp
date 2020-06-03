@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stack>
 #include <unordered_set>
+#include <unordered_map>
 #include "cpp-components.h"
 #include <string.h>
 
@@ -21,16 +22,16 @@ static long soma_index;
 
 static void IndexToIndices(long iv, long &ix, long &iy, long &iz)
 {
-  iz = iv / sheet_size;
-  iy = (iv - iz * sheet_size) / row_size;
-  ix = iv % row_size;
+    iz = iv / sheet_size;
+    iy = (iv - iz * sheet_size) / row_size;
+    ix = iv % row_size;
 }
 
 
 
 static long IndicesToIndex(long ix, long iy, long iz)
 {
-  return iz * sheet_size + iy * row_size + ix;
+    return iz * sheet_size + iy * row_size + ix;
 }
 
 
@@ -52,7 +53,7 @@ void CppPopulatePointCloud(const char *prefix, const char *dataset, long label) 
     if (fread(&(grid_size[OR_Y]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
     if (fread(&(grid_size[OR_X]), sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
     if (fread(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to read %s.\n", filename); exit(-1); }
-    
+
     // set global indexing parameters (do here since for loop calls IndicesToIndex)
     nentries = grid_size[OR_Z] * grid_size[OR_Y] * grid_size[OR_X];
     sheet_size = grid_size[OR_Y] * grid_size[OR_X];
@@ -70,10 +71,10 @@ void CppPopulatePointCloud(const char *prefix, const char *dataset, long label) 
         long iv = IndicesToIndex(ix, iy, iz);
 
         if (!strcmp(dataset, "original_data/segmentations")) {
-          segment.insert(iv);
+            segment.insert(iv);
         }
         else if (!strcmp(dataset, "somae")) {
-          soma_index = iv;
+            soma_index = iv;
         }
         else { fprintf(stderr, "Unrecognized point cloud: %s.\n", dataset); exit(-1); }
     }
@@ -86,70 +87,109 @@ void CppPopulatePointCloud(const char *prefix, const char *dataset, long label) 
 
 void CppForceConnectivity(char *prefix, long label)
 {
-  // create new segment set
-  segment = std::unordered_set<long>();
+    // create new segment set
+    segment = std::unordered_set<long>();
 
-  CppPopulatePointCloud(prefix, "original_data/segmentations", label);
-  CppPopulatePointCloud(prefix, "somae", label);
+    CppPopulatePointCloud(prefix, "original_data/segmentations", label);
+    long original_nvoxels = segment.size();
 
-  // potential error in soma location 
-  if (segment.find(soma_index) == segment.end()) return; 
-  
-  std::stack<long> voxels = std::stack<long>();
-  voxels.push(soma_index);
+    // create a set of vertices that are connected
+    std::unordered_set<long> visited = std::unordered_set<long>();
+    std::unordered_map<long, long> components = std::unordered_map<long, long>();
 
-  // create a set of vertices that are connected
-  std::unordered_set<long> visited = std::unordered_set<long>();
+    long current_label = 0;
 
-  // perform depth first search
-  while (voxels.size()) {
-    // remove the pixel from the queue
-    long voxel = voxels.top();
-    voxels.pop();
-    
-    // if already visited skip
-    if (visited.find(voxel) != visited.end()) continue;
+    for (std::unordered_set<long>::iterator it = segment.begin(); it != segment.end(); ++it) {
+        // skip voxels that are already seen
+        if (visited.find(*it) != visited.end()) continue;
 
-    // label this voxel as visited
-    visited.insert(voxel);
+        current_label += 1;
 
-    // add the twenty six neighbors to the queue
-    long ix, iy, iz;
-    IndexToIndices(voxel, ix, iy, iz);
+        std::stack<long> voxels = std::stack<long>();
+        voxels.push(*it);
 
-    for (long iw = iz - 1; iw <= iz + 1; ++iw) {
-      if (iw < 0 or iw >= grid_size[OR_Z]) continue;
-      for (long iv = iy - 1; iv <= iy + 1; ++iv) {
-        if (iv < 0 or iv >= grid_size[OR_Y]) continue;
-        for (long iu = ix - 1; iu <= ix + 1; ++iu) {
-          if (iu < 0 or iu >= grid_size[OR_X]) continue;
-          long neighbor = IndicesToIndex(iu, iv, iw);
-          if (neighbor == voxel) continue;
+        // perform depth first search
+        while (voxels.size()) {
+            // remove the pixel from the queue
+            long voxel = voxels.top();
+            voxels.pop();
 
-          // skip background voxels
-          if (segment.find(neighbor) == segment.end()) continue;
+            components[voxel] = current_label;
 
-          // add this neighbor
-          voxels.push(neighbor);
+            // if already visited skip
+            if (visited.find(voxel) != visited.end()) continue;
+
+            // label this voxel as visited
+            visited.insert(voxel);
+            components[voxel] = current_label;
+
+            // add the twenty six neighbors to the queue
+            long ix, iy, iz;
+            IndexToIndices(voxel, ix, iy, iz);
+
+            for (long iw = iz - 1; iw <= iz + 1; ++iw) {
+                if (iw < 0 or iw >= grid_size[OR_Z]) continue;
+                for (long iv = iy - 1; iv <= iy + 1; ++iv) {
+                    if (iv < 0 or iv >= grid_size[OR_Y]) continue;
+                    for (long iu = ix - 1; iu <= ix + 1; ++iu) {
+                        if (iu < 0 or iu >= grid_size[OR_X]) continue;
+                        long neighbor = IndicesToIndex(iu, iv, iw);
+                        if (neighbor == voxel) continue;
+
+                        // skip background voxels
+                        if (segment.find(neighbor) == segment.end()) continue;
+
+                        // add this neighbor
+                        voxels.push(neighbor);
+                    }
+                }
+            }
         }
-      }
     }
-  }
+    long ncomponents = current_label + 1;
+    long *component_sizes = new long[ncomponents];
+    for (long iv = 0; iv < ncomponents; ++iv) {
+        component_sizes[iv] = 0;
+    }
 
-  char output_filename[4096];
-  sprintf(output_filename, "segmentations/%s/%06ld.pts", prefix, label);
+    long nvoxels = 0;
+    for (std::unordered_map<long, long>::iterator it = components.begin(); it != components.end(); ++it) {
+        component_sizes[it->second] += 1;
+        nvoxels += 1;
+    }
+    if (nvoxels != original_nvoxels) {
+        fprintf(stderr, "Variable starting and ending voxel sizes\n");
+        exit(-1);
+    }
 
-  FILE *fp = fopen(output_filename, "wb");
-  if (!fp) { fprintf(stderr, "Failed to write to %s\n", output_filename); return ; }
+    long largest_component = 0;
+    long largest_component_size = 0;
 
-  long npoints = visited.size();
-  if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
-  if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
-  if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
-  if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    for (long iv = 0; iv < ncomponents; ++iv) {
+        if (component_sizes[iv] > largest_component_size) {
+            largest_component_size = component_sizes[iv];
+            largest_component = iv;
+        }
+    }
 
-  for (std::unordered_set<long>::iterator it = visited.begin(); it != visited.end(); ++it) {
-    long voxel_index = *it;
-    if (fwrite(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
-  }
+    printf("Largest Component: %ld (%0.2lf%%)\n", largest_component_size, 100 * float(largest_component_size) / float(nvoxels));
+
+    char output_filename[4096];
+    sprintf(output_filename, "segmentations/%s/%06ld.pts", prefix, label);
+
+    FILE *fp = fopen(output_filename, "wb");
+    if (!fp) { fprintf(stderr, "Failed to write to %s\n", output_filename); return ; }
+
+    long npoints = visited.size();
+    if (fwrite(&(grid_size[OR_Z]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    if (fwrite(&(grid_size[OR_Y]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    if (fwrite(&(grid_size[OR_X]), sizeof(long), 1, fp ) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    if (fwrite(&npoints, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+
+    for (std::unordered_map<long, long>::iterator it = components.begin(); it != components.end(); ++it) {
+        if (it->second != largest_component) continue;
+
+        long voxel_index = it->first;
+        if (fwrite(&voxel_index, sizeof(long), 1, fp) != 1) { fprintf(stderr, "Failed to write to %s\n", output_filename); return; }
+    }
 }
