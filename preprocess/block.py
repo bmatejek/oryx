@@ -13,7 +13,7 @@ from oryx.utilities.constants import *
 def GenerateBlocks(prefix, label):
     # get the number of blocks
     zres, yres, xres = GridSize(prefix)
-    block_sizes = (128, 1024, 1024)
+    block_sizes = (1024, 1024, 1024)
 
     nzblocks = int(math.ceil(float(zres) / block_sizes[OR_Z]))
     nyblocks = int(math.ceil(float(yres) / block_sizes[OR_Y]))
@@ -35,13 +35,13 @@ def GenerateBlocks(prefix, label):
                 points_per_block[(iz, iy, ix)] = []
 
     for point in points:
-        iz = point / (yres * xres)
-        iy = (point - iz * yres * xres) / xres
+        iz = point // (yres * xres)
+        iy = (point - iz * yres * xres) // xres
         ix = point % xres
 
-        zblock = iz / block_sizes[OR_Z]
-        yblock = iy / block_sizes[OR_Y]
-        xblock = ix / block_sizes[OR_X]
+        zblock = iz // block_sizes[OR_Z]
+        yblock = iy // block_sizes[OR_Y]
+        xblock = ix // block_sizes[OR_X]
 
         iz = iz - zblock * block_sizes[OR_Z]
         iy = iy - yblock * block_sizes[OR_Y]
