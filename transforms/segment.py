@@ -31,7 +31,7 @@ def SectionExtractPointCloud(data, z_start):
         for iy in range(yres):
             for ix in range(xres):
                 if not data[iz,iy,ix]: continue
-                
+
                 # need to add z_start since this section is not necessarilly at the bottom
                 iv = (z_start + iz) * yres * xres + iy * xres + ix
                 point_clouds[data[iz,iy,ix]].append(iv)
@@ -75,15 +75,15 @@ def CombineSectionPointClouds(prefix):
     zres, yres, xres = dataIO.GridSize(prefix)
 
     sub_directory = 'original_data/segmentations/{}/sections'.format(prefix)
-    
+
     # get the maximum label from the filenames
     max_label = max(int(filename.split('-')[-1][:-4]) for filename in os.listdir(sub_directory)) + 1
 
-    # go through every label 
+    # go through every label
     for label in range(max_label):
         filenames = sorted(glob.glob('{}/*-label-{:06d}.pts'.format(sub_directory, label)))
         if not len(filenames): continue
-        
+
         # write the point cloud to this final file
         output_filename = 'original_data/segmentations/{}/{:06d}.pts'.format(prefix, label)
         with open(output_filename, 'wb') as wfd:
@@ -118,7 +118,7 @@ def ExtractJWRPointCloud(data):
         for iy in range(yres):
             for ix in range(xres):
                 if not data[iz,iy,ix]: continue
-                
+
                 iv = iz * yres * xres + iy * xres + ix
                 point_cloud.append(iv)
 
@@ -134,7 +134,7 @@ def JWRPointCloud(label):
         # use np.array to decompress
         keys = [key for key in hf.keys()]
         data = np.array(hf[keys[0]])
-    
+
     # verify the resolutions match
     zres, yres, xres = dataIO.GridSize('JWR')
     assert (zres == data.shape[OR_Z] and yres == data.shape[OR_Y] and xres == data.shape[OR_X])
@@ -169,7 +169,7 @@ def ExtractSNEMIPointClouds(data):
         for iy in range(yres):
             for ix in range(xres):
                 if not data[iz,iy,ix]: continue
-                
+
                 # need to add z_start since this section is not necessarilly at the bottom
                 iv = iz * yres * xres + iy * xres + ix
                 point_clouds[data[iz,iy,ix]].append(iv)
